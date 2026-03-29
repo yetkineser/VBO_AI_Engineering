@@ -1,0 +1,30 @@
+============================================================
+TEST SET EVALUATION RESULTS
+============================================================
+
+Model          : bert-base-uncased
+Device         : mps
+Test samples   : 25000
+Accuracy       : 0.9166 (91.66%)
+
+Classification Report
+------------------------------------------------------------
+              precision    recall  f1-score   support
+
+    Negative       0.90      0.94      0.92     12500
+    Positive       0.93      0.90      0.91     12500
+
+    accuracy                           0.92     25000
+   macro avg       0.92      0.92      0.92     25000
+weighted avg       0.92      0.92      0.92     25000
+
+Confusion Matrix
+------------------------------------------------------------
+                 Predicted Neg  Predicted Pos
+  Actual Neg     11695          805
+  Actual Pos     1280           11220
+
+True Negatives : 11695
+False Positives: 805
+False Negatives: 1280
+True Positives : 11220

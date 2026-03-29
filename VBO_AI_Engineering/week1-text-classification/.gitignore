@@ -1,0 +1,22 @@
+# Virtual environment
+.venv/
+
+# Model artifacts
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# HF cache
+.cache/
+
+# Outputs — keep logs/reports, ignore saved models (too large for git)
+outputs/model/
+outputs/*/model/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store

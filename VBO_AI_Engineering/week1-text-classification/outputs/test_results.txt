@@ -1,0 +1,30 @@
+============================================================
+TEST SET EVALUATION RESULTS
+============================================================
+
+Model          : distilbert-base-uncased
+Device         : mps
+Test samples   : 1000
+Accuracy       : 0.8940 (89.40%)
+
+Classification Report
+------------------------------------------------------------
+              precision    recall  f1-score   support
+
+    Negative       0.90      0.89      0.90       512
+    Positive       0.89      0.89      0.89       488
+
+    accuracy                           0.89      1000
+   macro avg       0.89      0.89      0.89      1000
+weighted avg       0.89      0.89      0.89      1000
+
+Confusion Matrix
+------------------------------------------------------------
+                 Predicted Neg  Predicted Pos
+  Actual Neg     458            54
+  Actual Pos     52             436
+
+True Negatives : 458
+False Positives: 54
+False Negatives: 52
+True Positives : 436

@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
+yfinance
+httpx
+python-dotenv
+alembic
+pytest
+pytest-asyncio

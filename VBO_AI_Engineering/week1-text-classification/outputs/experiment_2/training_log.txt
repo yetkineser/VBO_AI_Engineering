@@ -1,0 +1,29 @@
+Experiment 2: BERT-base + 25K samples
+============================================================
+Model: bert-base-uncased
+Device: mps
+Train Samples: ALL (25K)
+Test Samples: ALL (25K)
+Batch Size: 16
+Learning Rate: 2e-05
+Max Length: 256
+Epochs: 3
+============================================================
+
+Epoch 1/3 | Train Loss: 0.2664 | Val Accuracy: 0.9183 | Time: 698.7s
+Epoch 2/3 | Train Loss: 0.1433 | Val Accuracy: 0.9172 | Time: 657.4s
+Epoch 3/3 | Train Loss: 0.0697 | Val Accuracy: 0.9166 | Time: 655.2s
+
+Classification Report
+============================================================
+              precision    recall  f1-score   support
+
+    Negative       0.90      0.94      0.92     12500
+    Positive       0.93      0.90      0.91     12500
+
+    accuracy                           0.92     25000
+   macro avg       0.92      0.92      0.92     25000
+weighted avg       0.92      0.92      0.92     25000
+
+Confusion Matrix
+  TN=11695  FP=805  FN=1280  TP=11220
