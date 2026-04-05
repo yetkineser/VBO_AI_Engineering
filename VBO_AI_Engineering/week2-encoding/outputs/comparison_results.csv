@@ -1,0 +1,27 @@
+﻿Vektorlestirme,Model,Accuracy,Precision,Recall,F1 (macro),AUC-ROC,Sure (sn)
+CountVectorizer (One-Hot),Naive Bayes (MultinomialNB),0.812,0.8157,0.812,0.8115,0.8886,0.015
+CountVectorizer (One-Hot),Logistic Regression,0.856,0.856,0.856,0.856,0.9238,0.585
+CountVectorizer (One-Hot),SVM (LinearSVC),0.848,0.848,0.848,0.848,0.9162,0.03
+CountVectorizer (One-Hot),XGBoost,0.805,0.812,0.805,0.8039,0.8784,6.274
+CountVectorizer (One-Hot),LightGBM,0.798,0.8043,0.798,0.7969,0.8773,1.449
+TfidfVectorizer,Naive Bayes (MultinomialNB),0.817,0.8196,0.817,0.8166,0.9129,0.01
+TfidfVectorizer,Logistic Regression,0.835,0.8354,0.835,0.835,0.9226,0.183
+TfidfVectorizer,SVM (LinearSVC),0.86,0.86,0.86,0.86,0.9349,0.016
+TfidfVectorizer,XGBoost,0.804,0.8062,0.804,0.8037,0.8813,14.154
+TfidfVectorizer,LightGBM,0.804,0.806,0.804,0.8037,0.8787,1.288
+Transformer (multilingual-MiniLM),Logistic Regression,0.852,0.8521,0.852,0.852,0.9246,0.112
+Transformer (multilingual-MiniLM),SVM (LinearSVC),0.854,0.8541,0.854,0.854,0.9225,1.307
+Transformer (multilingual-MiniLM),XGBoost,0.858,0.858,0.858,0.858,0.9288,0.569
+Transformer (multilingual-MiniLM),LightGBM,0.853,0.8531,0.853,0.853,0.9277,0.247
+Transformer (turkish-BERT-nli),Logistic Regression,0.874,0.8747,0.874,0.8739,0.9393,0.58
+Transformer (turkish-BERT-nli),SVM (LinearSVC),0.858,0.8586,0.858,0.8579,0.9259,3.939
+Transformer (turkish-BERT-nli),XGBoost,0.872,0.8723,0.872,0.872,0.9441,0.813
+Transformer (turkish-BERT-nli),LightGBM,0.872,0.8722,0.872,0.872,0.9418,0.455
+Transformer (Trendyol-ecomm),Logistic Regression,0.891,0.8911,0.891,0.891,0.9567,0.053
+Transformer (Trendyol-ecomm),SVM (LinearSVC),0.902,0.9021,0.902,0.902,0.9568,0.2
+Transformer (Trendyol-ecomm),XGBoost,0.885,0.885,0.885,0.885,0.9495,0.824
+Transformer (Trendyol-ecomm),LightGBM,0.892,0.8921,0.892,0.892,0.9512,0.445
+Ollama (nomic-embed-text),Logistic Regression,0.745,0.7461,0.745,0.7447,0.828,0.081
+Ollama (nomic-embed-text),SVM (LinearSVC),0.749,0.7493,0.749,0.7489,0.8339,0.315
+Ollama (nomic-embed-text),XGBoost,0.742,0.7439,0.742,0.7415,0.8243,0.803
+Ollama (nomic-embed-text),LightGBM,0.736,0.738,0.736,0.7354,0.8247,0.412

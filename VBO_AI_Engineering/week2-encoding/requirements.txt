@@ -1,0 +1,8 @@
+scikit-learn
+pandas
+zeyrek
+xgboost
+lightgbm
+sentence-transformers
+transformers
+torch
