@@ -1,6 +1,12 @@
 # Week 3: Turkish Word Embeddings — FastText, Similarity & Clustering
 
-This project loads pre-trained Turkish word embedding vectors (FastText / GloVe), demonstrates cosine similarity between words, groups related words using K-Means clustering, and optionally runs word analogy tasks and t-SNE visualisation. It goes beyond the homework by adding analogy reasoning, dimensionality-reduction plots, and an auto-generated Markdown report.
+This project loads pre-trained Turkish word embedding vectors (FastText / GloVe), demonstrates cosine similarity between words, groups related words using K-Means clustering, and optionally runs word analogy tasks and t-SNE visualisation. It goes well beyond the homework by adding:
+
+- **25 word analogies** across 7 categories (gender, country-capital, antonyms, verb tense, etc.)
+- **Formal benchmark evaluation** on AnlamVer (500 pairs), Turkish semantic analogies (7742 questions), and syntactic analogies (206 questions)
+- **5-model comparison**: FastText vs BERTurk vs XLM-RoBERTa vs Turkish BERT-NLI-STS vs Multilingual MiniLM
+- **t-SNE visualisation** of clustered words
+- **16 documentation files** (EN + TR) covering learning objectives, evaluation metrics, results analysis, and self-evaluation
 
 ---
 
@@ -136,23 +142,30 @@ week3-embedding/
 ├── .gitignore                             ← excludes data/*.vec*, outputs/
 ├── data/
 │   ├── README.md                          ← download instructions
-│   └── cc.tr.300.vec                      ← (not committed — ~4.5 GB)
+│   ├── cc.tr.300.vec                      ← (not committed — ~4.5 GB)
+│   ├── anlamver_similarity.txt            ← AnlamVer benchmark (500 pairs)
+│   ├── turkish-analogy-semantic.txt       ← 7742 semantic analogy questions
+│   └── SynAnalogyTr.txt                   ← 206 syntactic analogy questions
 ├── src/
 │   ├── __init__.py
 │   ├── embedding_utils.py                 ← core functions (load, similarity, cluster)
-│   └── main.py                            ← CLI entry point
+│   ├── main.py                            ← CLI entry point
+│   ├── evaluate.py                        ← benchmark evaluation (FastText)
+│   └── evaluate_advanced.py               ← 5-model comparison
 ├── outputs/                               ← auto-generated results
 │   ├── similarity.csv
 │   ├── clusters.csv
 │   ├── results.md
-│   └── tsne_clusters.png                  ← (with --visualise)
+│   ├── tsne_clusters.png                  ← (with --visualise)
+│   ├── evaluation_report.md               ← benchmark results
+│   └── model_comparison.md                ← 5-model comparison report
 ├── docs/
-│   ├── HOMEWORK.md                        ← original assignment (English)
-│   ├── HOMEWORK_TR.md                     ← assignment (Turkish)
-│   ├── LEARNING_OBJECTIVES.md             ← study guide with links
-│   ├── LEARNING_OBJECTIVES_TR.md          ← study guide (Turkish)
-│   ├── EXTRA_SUGGESTIONS.md               ← ideas for extensions
-│   └── EXTRA_SUGGESTIONS_TR.md            ← extensions (Turkish)
+│   ├── HOMEWORK.md + _TR                  ← original assignment
+│   ├── LEARNING_OBJECTIVES.md + _TR       ← study guide with links
+│   ├── EXTRA_SUGGESTIONS.md + _TR         ← ideas for extensions
+│   ├── EVALUATION_METRICS.md + _TR        ← metric explanations with examples
+│   ├── RESULTS_ANALYSIS.md + _TR          ← interpretation of our results
+│   └── SELF_EVALUATION.md + _TR           ← what we did & learned per requirement
 └── scripts/                               ← utility scripts
 ```
 
@@ -235,6 +248,8 @@ flowchart TD
 | `outputs/clusters.csv` | Each word and its cluster assignment |
 | `outputs/results.md` | Full Markdown report with all results |
 | `outputs/tsne_clusters.png` | 2D scatter plot of clustered words (with `--visualise`) |
+| `outputs/evaluation_report.md` | Formal benchmark results (AnlamVer, analogies, clustering) |
+| `outputs/model_comparison.md` | 5-model comparison with per-category breakdowns |
 
 ---
 
@@ -266,13 +281,87 @@ All functions handle OOV gracefully — no crashes, just `None` or `NaN`.
 
 ---
 
+## Benchmark Evaluation
+
+Beyond the qualitative checks in `main.py`, we ran formal benchmarks using `evaluate.py` and `evaluate_advanced.py`.
+
+### Turkish Benchmarks Used
+
+| Benchmark | Size | What it measures |
+|-----------|------|-----------------|
+| [AnlamVer](https://aclanthology.org/C18-1323/) | 500 word pairs | Correlation with human similarity judgements (Spearman ρ) |
+| Turkish Semantic Analogies | 7742 questions, 7 categories | Relational pattern accuracy (Top-1/5, MRR) |
+| Turkish Syntactic Analogies | 206 questions | Morphological pattern accuracy |
+| Clustering (custom) | 90 words, 5 categories | Cluster quality (ARI, NMI, Purity) |
+
+### FastText Results (limit=200K)
+
+| Benchmark | Metric | Score |
+|-----------|--------|-------|
+| AnlamVer | Spearman ρ | **0.571** |
+| Semantic Analogies | Top-5 Accuracy | **65.1%** |
+| Syntactic Analogies | Top-5 Accuracy | **69.8%** |
+| Clustering (k=5) | ARI | **0.949** |
+
+### 5-Model Comparison
+
+We compared static (FastText) vs contextual (BERTurk, XLM-RoBERTa) vs sentence-transformer (Turkish NLI-STS, MiniLM) embeddings on the same benchmarks:
+
+```mermaid
+graph LR
+    subgraph "Word-Level Tasks Winner"
+        FT["FastText cc.tr.300<br/>Spearman ρ = 0.571<br/>Sem. Analogy Top-5 = 65.1%<br/>Clustering ARI = 0.949"]
+    end
+    subgraph "Syntactic Tasks Winner"
+        NLI["Turkish BERT-NLI-STS<br/>Syn. Analogy Top-5 = 98.5%<br/>Synonym Top-5 = 95.7%"]
+    end
+    subgraph "Struggled"
+        XLM["XLM-RoBERTa<br/>Spearman ρ = 0.014<br/>ARI = 0.020"]
+    end
+```
+
+| Model | Type | AnlamVer ρ | Sem. Top-5 | Syn. Top-5 | ARI |
+|-------|------|-----------|-----------|-----------|-----|
+| **FastText cc.tr.300** | Static | **0.571** | **65.1%** | 69.8% | **0.949** |
+| BERTurk | Contextual | 0.356 | 18.1% | 75.2% | 0.419 |
+| XLM-RoBERTa | Contextual | 0.014 | 7.8% | 50.5% | 0.020 |
+| **Turkish BERT-NLI-STS** | Sentence-TR | 0.514 | 22.4% | **98.5%** | 0.697 |
+| Multilingual MiniLM | Sentence-TR | 0.265 | 14.6% | 84.0% | 0.271 |
+
+**Key finding:** There is no universally "best" model. FastText dominates word-level tasks (similarity, semantic analogy, clustering). Turkish BERT-NLI-STS dominates syntactic/morphological tasks. Raw contextual models (BERT, RoBERTa) perform poorly on single-word tasks because they need sentence context. See `docs/RESULTS_ANALYSIS.md` for the full interpretation.
+
+### Running the evaluations
+
+```bash
+# FastText benchmark evaluation
+python src/evaluate.py
+
+# 5-model comparison (requires transformers + sentence-transformers)
+pip install transformers sentence-transformers torch
+python src/evaluate_advanced.py
+
+# Evaluate specific models only
+python src/evaluate_advanced.py --models fasttext berturk turkish-nli
+```
+
+---
+
 ## Evaluation Metrics
 
-This project does not train a classifier, so we use qualitative evaluation:
+This project uses both qualitative and quantitative evaluation:
 
-- **Similarity scores** — do similar words get high cosine similarity and dissimilar words get low scores?
-- **Cluster coherence** — do animals, vehicles, and fruits end up in different clusters?
-- **Analogy accuracy** — is the expected answer in the top-5 results of the vector arithmetic?
+**Quantitative (formal benchmarks):**
+- **Spearman ρ** — rank correlation between model similarity and human judgements
+- **Top-1 / Top-5 Accuracy** — is the expected analogy answer in the top results?
+- **MRR** — mean reciprocal rank of the correct answer
+- **ARI / NMI** — clustering agreement with ground-truth categories
+
+**Qualitative:**
+- **Similarity scores** — do similar words get high cosine similarity?
+- **Cluster coherence** — do animals, vehicles, and fruits separate cleanly?
+- **t-SNE plot** — are clusters visually distinct?
+
+See `docs/EVALUATION_METRICS.md` for detailed explanations with simple examples.
 
 ---
 
@@ -308,6 +397,20 @@ This project does not train a classifier, so we use qualitative evaluation:
 - [Zeyrek — Turkish morphological analyser](https://github.com/obulat/zeyrek)
 - [Zemberek-NLP](https://github.com/ahmetaa/zemberek-nlp) — comprehensive Turkish NLP toolkit
 - [Turkish NLP Resources](https://github.com/topics/turkish-nlp)
+- [AnlamVer — Turkish word similarity benchmark](https://aclanthology.org/C18-1323/)
+- [Comprehensive Analysis of Static Word Embeddings for Turkish (2024)](https://arxiv.org/abs/2405.07778)
+
+### Contextual & Sentence Embeddings
+
+- [BERTurk (dbmdz)](https://huggingface.co/dbmdz/bert-base-turkish-cased) — Turkish BERT model
+- [Turkish BERT-NLI-STS](https://huggingface.co/emrecan/bert-base-turkish-cased-mean-nli-stsb-tr) — fine-tuned for similarity
+- [Sentence-Transformers](https://www.sbert.net/) — sentence-level embeddings
+- [Jay Alammar — The Illustrated BERT](https://jalammar.github.io/illustrated-bert/) — visual guide to contextual embeddings
+
+### Evaluation
+
+- [Bakarov, 2018 — Survey of Word Embedding Evaluation Methods](https://arxiv.org/abs/1801.09536)
+- [scikit-learn — Clustering Evaluation](https://scikit-learn.org/stable/modules/clustering.html#clustering-performance-evaluation) — ARI, NMI, Purity
 
 ### Visualisation
 

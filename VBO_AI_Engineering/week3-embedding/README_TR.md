@@ -1,6 +1,12 @@
 # Week 3: Türkçe Kelime Gömmeleri — FastText, Benzerlik & Kümeleme
 
-Bu proje, önceden eğitilmiş Türkçe kelime gömme vektörlerini (FastText / GloVe) yükler, kelimeler arasında kosinüs benzerliği gösterir, ilgili kelimeleri K-Means kümeleme ile gruplar ve isteğe bağlı olarak kelime analojisi görevleri ile t-SNE görselleştirmesi çalıştırır. Analoji akıl yürütme, boyut indirgeme grafikleri ve otomatik oluşturulan Markdown raporu ekleyerek ödevin ötesine geçer.
+Bu proje, önceden eğitilmiş Türkçe kelime gömme vektörlerini (FastText / GloVe) yükler, kelimeler arasında kosinüs benzerliği gösterir, ilgili kelimeleri K-Means kümeleme ile gruplar ve isteğe bağlı olarak kelime analojisi görevleri ile t-SNE görselleştirmesi çalıştırır. Ödevin çok ötesine geçerek şunları ekler:
+
+- **25 kelime analojisi** 7 kategoride (cinsiyet, ülke-başkent, zıt anlamlılar, fiil zamanı vb.)
+- **Resmi kıyaslama değerlendirmesi**: AnlamVer (500 çift), Türkçe anlamsal analojiler (7742 soru) ve sözdizimsel analojiler (206 soru)
+- **5 model karşılaştırması**: FastText vs BERTurk vs XLM-RoBERTa vs Turkish BERT-NLI-STS vs Multilingual MiniLM
+- **t-SNE görselleştirme** kümelenmiş kelimeler
+- **16 dokümantasyon dosyası** (EN + TR): öğrenme hedefleri, değerlendirme metrikleri, sonuç analizi ve öz değerlendirme
 
 ---
 
@@ -97,23 +103,30 @@ week3-embedding/
 ├── .gitignore                             ← data/*.vec*, outputs/ hariç tutar
 ├── data/
 │   ├── README.md                          ← indirme talimatları
-│   └── cc.tr.300.vec                      ← (commit edilmez — ~4.5 GB)
+│   ├── cc.tr.300.vec                      ← (commit edilmez — ~4.5 GB)
+│   ├── anlamver_similarity.txt            ← AnlamVer kıyaslaması (500 çift)
+│   ├── turkish-analogy-semantic.txt       ← 7742 anlamsal analoji sorusu
+│   └── SynAnalogyTr.txt                   ← 206 sözdizimsel analoji sorusu
 ├── src/
 │   ├── __init__.py
 │   ├── embedding_utils.py                 ← temel fonksiyonlar (yükleme, benzerlik, kümeleme)
-│   └── main.py                            ← CLI giriş noktası
+│   ├── main.py                            ← CLI giriş noktası
+│   ├── evaluate.py                        ← kıyaslama değerlendirmesi (FastText)
+│   └── evaluate_advanced.py               ← 5 model karşılaştırması
 ├── outputs/                               ← otomatik oluşturulan sonuçlar
 │   ├── similarity.csv
 │   ├── clusters.csv
 │   ├── results.md
-│   └── tsne_clusters.png                  ← (--visualise ile)
+│   ├── tsne_clusters.png                  ← (--visualise ile)
+│   ├── evaluation_report.md               ← kıyaslama sonuçları
+│   └── model_comparison.md                ← 5 model karşılaştırma raporu
 ├── docs/
-│   ├── HOMEWORK.md                        ← orijinal ödev (İngilizce)
-│   ├── HOMEWORK_TR.md                     ← ödev (Türkçe)
-│   ├── LEARNING_OBJECTIVES.md             ← çalışma rehberi ve linkler
-│   ├── LEARNING_OBJECTIVES_TR.md          ← çalışma rehberi (Türkçe)
-│   ├── EXTRA_SUGGESTIONS.md               ← uzantı fikirleri
-│   └── EXTRA_SUGGESTIONS_TR.md            ← uzantılar (Türkçe)
+│   ├── HOMEWORK.md + _TR                  ← orijinal ödev
+│   ├── LEARNING_OBJECTIVES.md + _TR       ← çalışma rehberi ve linkler
+│   ├── EXTRA_SUGGESTIONS.md + _TR         ← uzantı fikirleri
+│   ├── EVALUATION_METRICS.md + _TR        ← örneklerle metrik açıklamaları
+│   ├── RESULTS_ANALYSIS.md + _TR          ← sonuçlarımızın yorumu
+│   └── SELF_EVALUATION.md + _TR           ← gereksinim başına ne yaptık & öğrendik
 └── scripts/                               ← yardımcı betikler
 ```
 
@@ -196,6 +209,8 @@ flowchart TD
 | `outputs/clusters.csv` | Her kelime ve küme ataması |
 | `outputs/results.md` | Tüm sonuçlarla tam Markdown raporu |
 | `outputs/tsne_clusters.png` | Kümelenmiş kelimelerin 2D dağılım grafiği (`--visualise` ile) |
+| `outputs/evaluation_report.md` | Resmi kıyaslama sonuçları (AnlamVer, analojiler, kümeleme) |
+| `outputs/model_comparison.md` | Kategori bazında ayrıntılı 5 model karşılaştırma raporu |
 
 ---
 
@@ -224,6 +239,44 @@ Tüm fonksiyonlar OOV durumunu zarif biçimde ele alır — çökme yok, sadece 
 3. **`limit=200_000`:** Tam FastText Türkçe dosyasında ~2M kelime var. Çoğu çöp (URL'ler, yazım hataları, nadir çekimler). İlk 200K yararlı sözlüğü kaplar ve yükleme süresini 30 saniyenin altında tutar.
 
 4. **Türkçe normalizasyonu için `casefold()`:** Python'un `casefold()` fonksiyonu Türkçeye özgü harf dönüşümünü doğru ele alır (`İ` → `i`, `I` → `ı`), `lower()` fonksiyonunun aksine.
+
+---
+
+## Kıyaslama Değerlendirmesi
+
+`main.py`'deki niteliksel kontrollerin ötesinde, `evaluate.py` ve `evaluate_advanced.py` ile resmi kıyaslamalar çalıştırdık.
+
+### FastText Sonuçları (limit=200K)
+
+| Kıyaslama | Metrik | Skor |
+|-----------|--------|------|
+| AnlamVer (500 çift) | Spearman ρ | **0.571** |
+| Anlamsal Analojiler (7742) | Top-5 Doğruluk | **%65.1** |
+| Sözdizimsel Analojiler (206) | Top-5 Doğruluk | **%69.8** |
+| Kümeleme (90 kelime, k=5) | ARI | **0.949** |
+
+### 5 Model Karşılaştırması
+
+| Model | Tip | AnlamVer ρ | Anl. Top-5 | Söz. Top-5 | ARI |
+|-------|-----|-----------|-----------|-----------|-----|
+| **FastText cc.tr.300** | Statik | **0.571** | **%65.1** | %69.8 | **0.949** |
+| BERTurk | Bağlamsal | 0.356 | %18.1 | %75.2 | 0.419 |
+| XLM-RoBERTa | Bağlamsal | 0.014 | %7.8 | %50.5 | 0.020 |
+| **Turkish BERT-NLI-STS** | Cümle-TR | 0.514 | %22.4 | **%98.5** | 0.697 |
+| Multilingual MiniLM | Cümle-TR | 0.265 | %14.6 | %84.0 | 0.271 |
+
+**Temel bulgu:** Evrensel olarak "en iyi" model yoktur. FastText kelime-düzeyi görevlere hükmeder. Turkish BERT-NLI-STS sözdizimsel/morfolojik görevlere hükmeder. Ham BERT/RoBERTa tek-kelime görevlerinde kötü performans gösterir çünkü cümle bağlamına ihtiyaç duyarlar. Tam yorum için `docs/RESULTS_ANALYSIS_TR.md`'ye bakın.
+
+### Değerlendirmeleri çalıştırma
+
+```bash
+# FastText kıyaslama değerlendirmesi
+python src/evaluate.py
+
+# 5 model karşılaştırması (transformers + sentence-transformers gerektirir)
+pip install transformers sentence-transformers torch
+python src/evaluate_advanced.py
+```
 
 ---
 
