@@ -1,0 +1,13 @@
+word1,word2,similarity
+kedi,köpek,0.7857
+araba,otobüs,0.5893
+elma,muz,0.6328
+kedi,araba,0.3681
+güzel,çirkin,0.5695
+iyi,kötü,0.7199
+büyük,küçük,0.6939
+hızlı,yavaş,0.6676
+okul,üniversite,0.6412
+doktor,hastane,0.5650
+bilgisayar,telefon,0.5530
+kitap,dergi,0.6098
