@@ -62,7 +62,7 @@ This document walks through every homework requirement, shows what we implemente
 **What we did:**
 - Implemented in `src/embedding_utils.py`
 - Uses `sklearn.metrics.pairwise.cosine_similarity` for the computation
-- Returns `float('nan')` for OOV words (not an exception — callers can filter with `math.isnan()`)
+- Returns `None` for OOV words, as specified by the homework
 - Tested on 12 Turkish word pairs with intuitively correct results
 
 **Results highlights:**
@@ -90,7 +90,7 @@ This document walks through every homework requirement, shows what we implemente
 - Implemented in `src/embedding_utils.py`
 - **L2-normalises vectors before clustering** — this is not in the homework spec but is the correct thing to do, because K-Means uses Euclidean distance and we want cosine-like behaviour
 - Silently skips OOV words with a log message
-- Guards against `k > len(valid_words)`
+- Raises `ValueError` when no valid words remain or when `k > len(valid_words)`, as specified by the homework
 - Tested with 24 words (8 animals + 8 vehicles + 8 fruits) → **all 24 correctly clustered**
 
 **What we learned:**
@@ -256,8 +256,8 @@ This document walks through every homework requirement, shows what we implemente
 | `load_fasttext_model()` | Done | Handles .vec and .gz, limit parameter, error messages |
 | `load_glove_model()` | Done | Auto-detects header, no_header fallback |
 | `get_word_vector()` | Done | Turkish-aware normalisation, graceful OOV |
-| `word_similarity()` | Done | Cosine via sklearn, NaN for OOV |
-| `cluster_words()` | Done | L2 normalisation, random_state=42, n_init=10 |
+| `word_similarity()` | Done | Cosine via sklearn, None for OOV |
+| `cluster_words()` | Done | L2 normalisation, random_state=42, n_init=10, ValueError for edge cases |
 | `main.py` CLI | Done | argparse, env vars, CSV + MD output |
 | `requirements.txt` | Done | Minimal dependencies |
 | `.gitignore` | Done | Excludes data/*.vec*, outputs/ |

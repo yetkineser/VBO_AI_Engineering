@@ -9,7 +9,7 @@ Design notes
 - We always return a `gensim.models.KeyedVectors` object (not a full FastText
   model) because it is faster to load and uses far less memory.
 - OOV (out-of-vocabulary) handling is explicit: `get_word_vector` returns
-  `None`, and `word_similarity` returns `float('nan')` rather than crashing.
+  `None`, and `word_similarity` returns `None` rather than crashing.
 - Text is normalised (lowercased, stripped) before lookup so that
   "Kedi", "KEDİ ", and "kedi" all hit the same vector.
 """
@@ -156,16 +156,15 @@ def get_word_vector(model: KeyedVectors, word: str) -> np.ndarray | None:
 # --------------------------------------------------------------------------- #
 
 
-def word_similarity(model: KeyedVectors, word1: str, word2: str) -> float:
+def word_similarity(model: KeyedVectors, word1: str, word2: str) -> float | None:
     """Cosine similarity between two words in `[-1, 1]`.
 
-    Returns `float('nan')` when either word is OOV, so that callers can
-    filter on `math.isnan()` without catching exceptions.
+    Returns `None` when either word is OOV, as specified by the homework.
     """
     v1 = get_word_vector(model, word1)
     v2 = get_word_vector(model, word2)
     if v1 is None or v2 is None:
-        return float("nan")
+        return None
 
     # sklearn.cosine_similarity expects 2D arrays
     sim = cosine_similarity(v1.reshape(1, -1), v2.reshape(1, -1))[0, 0]
@@ -189,12 +188,17 @@ def cluster_words(
     distance equivalent to cosine distance — closer to what we actually
     want in embedding space.
 
-    OOV words are silently skipped (a debug log entry is emitted). If no
-    words survive, we return an empty dict.
+    OOV words are silently skipped (a debug log entry is emitted).
+
+    Raises
+    ------
+    ValueError
+        If no valid (in-vocabulary) words remain after filtering, or if
+        `k` exceeds the number of valid words.
     """
     words = list(words)
     if not words:
-        return {}
+        raise ValueError("No words provided for clustering.")
 
     known_words: list[str] = []
     vectors: list[np.ndarray] = []
@@ -207,8 +211,16 @@ def cluster_words(
         vectors.append(v)
 
     if not known_words:
-        logger.warning("All %d input words were OOV — returning empty result", len(words))
-        return {}
+        raise ValueError(
+            f"All {len(words)} input words are out of vocabulary — "
+            "cannot cluster."
+        )
+
+    if k > len(known_words):
+        raise ValueError(
+            f"k={k} exceeds the number of valid words ({len(known_words)}). "
+            f"Use k <= {len(known_words)}."
+        )
 
     X = np.vstack(vectors).astype(np.float32)
 
@@ -217,17 +229,7 @@ def cluster_words(
     norms[norms == 0] = 1.0
     X = X / norms
 
-    # Guard against k > number of valid words
-    k_effective = min(k, len(known_words))
-    if k_effective < k:
-        logger.warning(
-            "Only %d valid words for k=%d — reducing k to %d",
-            len(known_words),
-            k,
-            k_effective,
-        )
-
-    km = KMeans(n_clusters=k_effective, random_state=42, n_init=10)
+    km = KMeans(n_clusters=k, random_state=42, n_init=10)
     labels = km.fit_predict(X)
 
     return {w: int(lbl) for w, lbl in zip(known_words, labels)}

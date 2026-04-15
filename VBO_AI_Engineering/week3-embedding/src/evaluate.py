@@ -128,7 +128,7 @@ def evaluate_similarity(model, filepath: Path) -> dict:
             total += 1
 
             sim = word_similarity(model, w1, w2)
-            if np.isnan(sim):
+            if sim is None:
                 oov_count += 1
                 if len(oov_examples) < 5:
                     oov_examples.append((w1, w2))

@@ -21,7 +21,6 @@ from __future__ import annotations
 import argparse
 import csv
 import logging
-import math
 import os
 import sys
 from collections import defaultdict
@@ -140,9 +139,9 @@ def print_header(title: str) -> None:
     print(f"{'=' * width}\n")
 
 
-def safe_format(value: float, fmt: str = ".4f") -> str:
-    """Format a float; return 'N/A (OOV)' for NaN."""
-    if math.isnan(value):
+def safe_format(value: float | None, fmt: str = ".4f") -> str:
+    """Format a float; return 'N/A (OOV)' for None."""
+    if value is None:
         return "N/A (OOV)"
     return f"{value:{fmt}}"
 
@@ -400,7 +399,7 @@ def save_results_md(
         lines.append("| A | B | C | Expected | Result | Score |")
         lines.append("|---|---|---|----------|--------|-------|")
         for r in analogy_rows:
-            score = safe_format(r.get("score", float("nan")))
+            score = safe_format(r.get("score"))
             lines.append(f"| {r['a']} | {r['b']} | {r['c']} | {r['expected']} | {r['result']} | {score} |")
 
     lines.append("")
