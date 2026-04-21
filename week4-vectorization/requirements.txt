@@ -1,0 +1,15 @@
+# Document parsing
+PyMuPDF>=1.24.0            # PDF text extraction (import fitz)
+EbookLib>=0.18              # EPUB text extraction
+beautifulsoup4>=4.12        # HTML cleaning for EPUB content
+
+# Databases
+pymongo>=4.7                # MongoDB driver
+elasticsearch>=8.13,<9      # Elasticsearch client (v8 for ES 8.x server)
+
+# Embeddings
+sentence-transformers>=3.0  # Dense vector generation
+torch>=2.0                  # Required by sentence-transformers
+
+# Utilities
+tqdm>=4.66                  # Progress bars
