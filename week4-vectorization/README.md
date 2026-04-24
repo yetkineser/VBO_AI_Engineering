@@ -51,7 +51,7 @@ flowchart TB
 |--------|--------|---------|----------|
 | **MongoDB** | Structured metadata | Filtering by author, size, date, tags | Cannot search inside text content |
 | **Elasticsearch** | Full text (inverted index) | Finding exact words and phrases | Cannot find semantically similar content |
-| **Vector DB** | Dense embeddings | Finding content by meaning | Cannot do exact phrase matching |
+| **Elasticsearch (dense_vector)** | Dense embeddings | Finding content by meaning | Cannot do exact phrase matching |
 
 A production RAG system uses **all three together**: filter by metadata, rank by keyword relevance, re-rank by semantic similarity.
 
@@ -102,22 +102,25 @@ python run.py --demo
 
 ```
 week4-vectorization/
-├── run.py                 ← Main entry point (ingest / search / demo)
-├── config.py              ← Paths, model name, connection settings
+├── run.py                 ← Main entry point (v1: ingest/search/demo, v2: ingest-v2/search-v2/compare)
+├── config.py              ← Paths, model name, chunk size, threshold, connections
 ├── requirements.txt
 ├── README.md              ← This file (English)
 ├── README_TR.md           ← Turkish version
 ├── GUIDE.md               ← Step-by-step homework guide (English)
 ├── LEARNING.md            ← What to learn + reading links (English)
 ├── LEARNING_TR.md         ← Turkish version
+├── SELF_EVALUATION.md     ← Self-assessment + instructor feedback
 ├── src/
-│   ├── file_parser.py     ← Extract text + metadata from PDF/EPUB/MD
-│   ├── mongo_store.py     ← MongoDB metadata operations
-│   ├── elastic_store.py   ← Elasticsearch text indexing + search
+│   ├── file_parser.py     ← Extract text + metadata + SHA-256 hash from PDF/EPUB/MD
+│   ├── mongo_store.py     ← MongoDB metadata operations (hash-based upsert)
+│   ├── elastic_store.py   ← Elasticsearch text indexing + BM25 search
 │   ├── vector_store.py    ← Embedding generation + kNN search
+│   ├── chunker.py         ← Text chunking with overlap (v2)
+│   ├── hybrid_store.py    ← Combined text+vector index + RRF hybrid search (v2)
 │   └── search_demo.py     ← Side-by-side comparison of all 3 systems
 └── outputs/
-    └── search_comparison.md  ← Auto-generated comparison report
+    └── search_comparison.md  ← Auto-generated comparison report + instructor feedback
 ```
 
 ## Data Source

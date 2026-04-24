@@ -143,4 +143,38 @@ Ran "En iyi pizza tarifi nedir?" (best pizza recipe) against a library of AI/DS 
 
 ---
 
+## Instructor Feedback (Post-Submission)
+
+**Score**: 98/100
+
+**Positive feedback**:
+- Production-grade repo structure with 8 modules, 7-command CLI, bilingual docs
+- Two-iteration approach (v1 → v2) going well beyond the requirements
+- `paraphrase-multilingual-MiniLM-L12-v2` recognised as a correct choice for Turkish content
+- 75 real books with auto-generated 33KB comparison report
+
+**Issues flagged and fixed**:
+
+### Issue 1: "Vector DB" naming (noted, no points deducted)
+
+The README table listed "Vector DB" as a separate storage layer, but we actually use Elasticsearch's `dense_vector` field — not a dedicated vector database like ChromaDB or Qdrant. This naming implied a separate system when it was really the same Elasticsearch instance.
+
+**Fix**: Updated README.md and README_TR.md tables to read "Elasticsearch (dense_vector)" instead of "Vector DB". Updated the Mermaid diagram labels to reflect this.
+
+### Issue 2: No file content hash for change detection (-2 points)
+
+The original `insert_metadata()` used `filename` as the unique key. If a file was modified and re-ingested, the `DuplicateKeyError` handler silently skipped it — the old metadata stayed in MongoDB even though the file had changed.
+
+**Fix**:
+- `file_parser.py`: Added `hashlib.sha256(path.read_bytes()).hexdigest()` to compute a content hash for every parsed file
+- `mongo_store.py`: Replaced the insert-or-skip logic with a three-way upsert:
+  - New filename → **insert**
+  - Same filename, same hash → **skip** (no change)
+  - Same filename, different hash → **update** (content changed, replace the record)
+- `run.py`: Updated the ingestion summary to report inserted/updated/skipped counts separately
+
+This makes the pipeline **idempotent** — running `--ingest` multiple times always converges to the correct state, even if source files have been modified between runs.
+
+---
+
 *VBO AI & LLM Bootcamp, Week 4 — Yetkin Eser (April 2026)*

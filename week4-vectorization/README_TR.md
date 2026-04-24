@@ -10,7 +10,7 @@ Bir klasördeki dosyaları üç farklı sisteme kaydet: metadata MongoDB'ye, tam
 |--------|-----------|--------------|------------|
 | **MongoDB** | Yapılandırılmış metadata | Yazar, boyut, tarih, etiket ile filtreleme | Metin içinde arama yapamaz |
 | **Elasticsearch** | Tam metin (ters indeks) | Tam kelime ve cümle eşleştirme | Anlamca benzer içeriği bulamaz |
-| **Vektör DB** | Yoğun gömmeler | Anlam bazlı içerik bulma | Tam cümle eşleştirme yapamaz |
+| **Elasticsearch (dense_vector)** | Yoğun gömmeler | Anlam bazlı içerik bulma | Tam cümle eşleştirme yapamaz |
 
 Üretim RAG sistemi **üçünü birlikte** kullanır: metadata ile filtrele, anahtar kelime ile sırala, semantik benzerlik ile tekrar sırala.
 

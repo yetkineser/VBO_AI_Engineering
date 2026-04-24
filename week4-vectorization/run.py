@@ -41,8 +41,8 @@ def cmd_ingest():
 
     # Step 2: Store metadata in MongoDB
     print("[2/4] Storing metadata in MongoDB...")
-    inserted = insert_many(docs)
-    print(f"  Inserted {inserted} new records (total: {mongo_count()})\n")
+    counts = insert_many(docs)
+    print(f"  Inserted: {counts['inserted']}, Updated: {counts['updated']}, Skipped: {counts['skipped']} (total: {mongo_count()})\n")
 
     # Step 3: Index text in Elasticsearch
     print("[3/4] Indexing full text in Elasticsearch...")

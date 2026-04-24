@@ -4,6 +4,7 @@ Extract text and metadata from PDF, EPUB, AZW3, and Markdown files.
 from __future__ import annotations
 
 import datetime
+import hashlib
 from pathlib import Path
 
 import fitz  # PyMuPDF
@@ -106,6 +107,7 @@ def parse_file(file_path: str | Path) -> dict | None:
 
     metadata.update(extra)
     metadata["word_count"] = len(text.split())
+    metadata["content_hash"] = hashlib.sha256(path.read_bytes()).hexdigest()
     metadata["text"] = text
     return metadata
 

@@ -18,27 +18,39 @@ def get_collection():
     return col
 
 
-def insert_metadata(doc: dict) -> bool:
+def insert_metadata(doc: dict) -> str:
     """
-    Insert a document's metadata into MongoDB.
+    Insert or update a document's metadata in MongoDB.
     Skips the full text to keep MongoDB lean — text goes to Elasticsearch.
+
+    Uses content_hash (SHA-256) to detect changes:
+      - New file        → insert → returns "inserted"
+      - Same hash       → skip   → returns "skipped"
+      - Different hash  → update → returns "updated"
     """
     col = get_collection()
     record = {k: v for k, v in doc.items() if k != "text"}
-    try:
+
+    existing = col.find_one({"filename": doc["filename"]}, {"content_hash": 1})
+
+    if existing is None:
         col.insert_one(record)
-        return True
-    except DuplicateKeyError:
-        return False
+        return "inserted"
+
+    if existing.get("content_hash") == doc.get("content_hash"):
+        return "skipped"
+
+    col.replace_one({"filename": doc["filename"]}, record)
+    return "updated"
 
 
-def insert_many(docs: list[dict]) -> int:
-    """Insert metadata for multiple documents. Returns count of new inserts."""
-    inserted = 0
+def insert_many(docs: list[dict]) -> dict:
+    """Insert/update metadata for multiple documents. Returns counts by action."""
+    counts = {"inserted": 0, "updated": 0, "skipped": 0}
     for doc in docs:
-        if insert_metadata(doc):
-            inserted += 1
-    return inserted
+        result = insert_metadata(doc)
+        counts[result] += 1
+    return counts
 
 
 def query_by_extension(ext: str) -> list[dict]:
