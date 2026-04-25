@@ -1,0 +1,11 @@
+[project]
+name = "week5-structured-output"
+version = "0.1.0"
+description = "Week 5 — LangChain Structured Output: CSV → LLM → Pydantic → JSONL"
+requires-python = ">=3.12"
+dependencies = [
+    "langchain>=0.3.0",
+    "langchain-openai>=0.3.0",
+    "pydantic>=2.0",
+    "python-dotenv>=1.0",
+]
