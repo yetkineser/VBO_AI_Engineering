@@ -157,3 +157,23 @@ After observing the cloud model's failures, the pipeline was re-run with two loc
 | Extraction accuracy | 8 | 6 | 7.5 | 8 |
 | Code quality and documentation | 5 | 5 | 5 | 5 |
 | **Total** | **34** | **32** | **33.5** | **34** |
+
+---
+
+## 6. Instructor Feedback (Alican Payaslı, 2026-04-29)
+
+**Score deduction**: -1p
+
+> Try/except yok, bir satırın LLM çağrısında hata olursa tüm pipeline çöker ve geri kalan ticketlar işlenmez. Satır bazında try/except + opsiyonel retry iyi olur.
+
+### Action Taken
+Pipeline'a iki katmanlı hata yönetimi eklendi:
+
+- **Tenacity retry decorator** (`invoke_with_retry`): transient hatalar (rate limit, timeout, network) için 3 deneme + exponential backoff. `ValidationError` retry edilmez (re-prompt aynı hatayı verir).
+- **Per-row try/except**: 3 retry de fail olursa hata `errors.jsonl`'e yazılır, döngü devam eder.
+
+Test edildi:
+- Local Qwen 2.5 14B: 8/8 başarılı, `errors.jsonl` boş.
+- Cloud (geçersiz API key ile): 8/8 satırda 3 retry sonrası fail, hepsi `errors.jsonl`'e yazıldı, pipeline çökmedi.
+
+Detay: [feedback.md](feedback.md), kod: [main.py:121-138](main.py#L121-L138).

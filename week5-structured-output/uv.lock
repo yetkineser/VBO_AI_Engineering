@@ -917,6 +917,7 @@ dependencies = [
     { name = "langchain-openai" },
     { name = "pydantic" },
     { name = "python-dotenv" },
+    { name = "tenacity" },
 ]
 
 [package.metadata]
@@ -925,6 +926,7 @@ requires-dist = [
     { name = "langchain-openai", specifier = ">=0.3.0" },
     { name = "pydantic", specifier = ">=2.0" },
     { name = "python-dotenv", specifier = ">=1.0" },
+    { name = "tenacity", specifier = ">=8.0" },
 ]
 
 [[package]]
