@@ -54,3 +54,6 @@ wandb/
 *.tsv
 *.parquet
 !**/outputs/.gitkeep
+
+# Local-only week 6 prep material (initial source docs)
+week6-rag/initial_docs/

@@ -1,256 +1,173 @@
-# Hafta 2: Metin Kodlama ve Duygu Analizi
+# Week 2: Metinleri Sayısallaştırma ve Basit Duygu Analizi
 
-Bu proje, ham metni makine ogrenmesi modellerinin anlayabilecegi sayisal temsillere donusturme problemini ele alir ve bu temsiller uzerine bir duygu siniflandirici insa eder. Temel yontemlerle baslar (integer encoding, one-hot, TF-IDF) ve kademeli olarak modern yaklasimlara ilerler (transformer embedding, zero-shot siniflandirma, Turkce BERT fine-tuning).
-
----
-
-## Neler Ogreneceksiniz
-
-| Konu | Beklenen |
-|------|----------|
-| **Metinden sayiya** | ML modelleri vektor/matris girdisi gerektirir. Kelimeleri ve cumleleri cesitli kodlama yontemleriyle sayisal forma donustureceksiniz. |
-| **Integer encoding** | Her kelimeye sozlukten benzersiz bir indeks atama: ornegin `"iyi" -> 42`. Basit, ama siralama anlamsiz. |
-| **One-hot encoding** | Sozlukteki her kelime icin ikili bir boyut olusturma. Kelime varsa 1, yoksa 0. |
-| **TF-IDF** | Kelimeleri, bir dokumanda ne kadar ayirt edici olduklarina gore agirliklandirma. Yaygin kelimeler dusuk puan alir. |
-| **Duygu analizi** | Bir metnin duygusal tonunu tahmin eden siniflandirma gorevi (ornegin pozitif / negatif). |
-| **Klasik ML modelleri** | Naive Bayes, Logistic Regression, SVM, XGBoost, LightGBM — temel odev icin derin ogrenme gerekmiyor. |
-| **Transformer embedding** | Onceden egitilmis bir dil modeli kullanarak cumleleri yogun, anlam iceren vektorlere kodlama. |
-| **Zero-shot siniflandirma** | Onceden egitilmis bir NLI modeli kullanarak hicbir egitim verisi olmadan duygu tahmini. |
-| **Fine-tuning** | Onceden egitilmis bir Turkce BERT modelini bizim duygu analizi gorevimize uyarlama. |
+Bu haftanın ödevi, **ham metni makine öğrenmesinin anlayacağı sayısal temsillere** dönüştürmeyi ve bu temsiller üzerinde **basit bir duygu analizi (sentiment)** modeli kurmayı hedefler. İsteğe bağlı pratik olarak **dosyalardan metin çıkarma** için `textract` kütüphanesi önerilmiştir.
 
 ---
 
-## Temel Kavramlar
+## Öğrenmeniz beklenen şeyler (özet)
 
-### 1. Metin Vektorlestirme
-
-Bilgisayarlar ham metni dogrudan isleyemez. Herhangi bir modele metin beslemeden once, onu bir sayi dizisine veya vektore donusturmeniz gerekir. Bu adim genellikle **ozellik cikarimi** veya **metin vektorlestirme** olarak bilinir.
-
-### 2. Integer Encoding (Tamsayi Kodlama)
-
-Tum egitim metinlerinden bir **sozluk** olusturursunuz ve her benzersiz kelimeye bir tamsayi indeks atarsiniz (0'dan |V|-1'e kadar). Bir cumle bu indekslerin dizisine donusur.
-
-**Onemli not:** Sayisal siralama keyfidir — indeks 42, indeks 7'den anlamli bir sekilde "buyuk" degildir. Bu yuzden integer encoding tek basina klasik ML modellerine girdi olarak nadiren kullanilir. Daha cok one-hot veya embedding tabanli temsillere gecis icin bir basamak gorevi gorur.
-
-### 3. One-Hot ve Bag of Words
-
-- **Etiketler icin:** 3 sinifta her ornek `[1,0,0]`, `[0,1,0]` veya `[0,0,1]` olur.
-- **Metin icin (Bag of Words):** Sozluk kadar genis bir vektor olusturursunuz. Cumledeki her kelime icin ilgili pozisyon 1'e (veya frekans sayisina) ayarlanir. Bu **yuksek boyutlu, seyrek** vektorler uretir. scikit-learn'de `CountVectorizer(binary=True)` bu yaklasimi uygular.
-
-### 4. TF-IDF
-
-TF-IDF, ham kelime sayilarinin bir adim otesine gecer. Bircok dokumanda gecen kelimeleri ("bir", "ve", "bu" gibi) dusuk agirliklandirir, belirli bir dokumana ozgu kelimeleri ise yuksek agirliklandirir. scikit-learn'un `TfidfVectorizer`'i bunu otomatik yapar.
-
-### 5. Duygu Siniflandirici Olusturma
-
-Tipik is akisi:
-
-1. Etiketli metin verisi hazirlayin (ornegin pozitif / negatif yorumlar).
-2. Metni yukaridaki yontemlerden biriyle sayisal ozelliklere donusturun.
-3. Egitim ve test setlerine bolin.
-4. Bir siniflandirici egitin ve metriklerle degerlendirin (accuracy, F1, AUC-ROC).
+| Konu | Ne öğrenmeniz isteniyor? |
+|------|---------------------------|
+| **Metin → sayı** | Model girdi olarak vektör/matris ister; kelime/cümle düzeyinde **encoding** ile bunu sağlarsınız. |
+| **Integer encoding (tamsayı kodlama)** | Kelimeleri (veya karakterleri) sözlükteki bir **indeks** ile sayıya eşlersiniz: örn. `"güzel" → 42`. |
+| **One-hot encoding** | Her kelime/kategori için **ayrı bir ikili boyut** açarsınız; ilgili kelime varsa o boyut 1, diğerleri 0. |
+| **Duygu analizi** | Metnin **duygu etiketi** (ör. olumlu / olumsuz / nötr) tahmin eden bir **sınıflandırma** problemi. |
+| **Basit model** | Derin öğrenme zorunlu değil; `scikit-learn` ile **Naive Bayes**, **lojistik regresyon**, **SVM** gibi klasik modeller tipik beklenti. |
+| **textract (isteğe bağlı)** | PDF, DOC, DOCX vb. dosyalardan **düz metin çıkarma**; veri kaynağınız dosya ise iş akışına girer. |
 
 ---
 
-## Modern Yaklasimlar (Odevin Otesinde)
+## Kavramları açıklayarak: ne demek istiyorlar?
 
-Bu proje, temel odev gereksinimlerinin otesinde bes ek yaklasim uygular. Her biri veri gereksinimi, islem maliyeti ve performans arasinda farkli bir denge gosterir.
+### 1. “Verilen metinleri … sayısallaştırma”
 
-### 1. Transformer Embedding (`--transformer`)
+Bilgisayar metni doğrudan “anlamaz”; önce **sayı dizisi** veya **seyrek/yoğun vektör** haline getirirsiniz. Bu adıma genelde **özellik çıkarımı (feature extraction)** veya **metin vektörleştirme (vectorization)** denir.
 
-CountVectorizer ve TF-IDF kelimeleri bagimsiz isler — "film harika" ile "harika film" arasindaki farki anlayamazlar. **Transformer embedding**'ler bu sorunu, tum cumleyi kelime sirasi, baglam ve anlamsal iliskileri yakalayan yogun bir vektore kodlayarak cozer.
+### 2. Integer encoding (metin bağlamında)
 
-Bu proje, alan ve dil uyumunun etkisini gostermek icin uc transformer modeli karsilastirir:
+- **Kelime düzeyi:** Tüm eğitim metinlerinden bir **kelime dağarcığı (vocabulary)** çıkarırsınız; her kelimeye `0 … |V|-1` arası bir tam sayı verirsiniz. Cümle, bu indekslerin dizisi olur (sabit uzunluk için **padding** veya **kesme** gerekir).
+- **Dikkat:** Tamsayılar arasındaki büyüklük ilişkisi genelde **anlamsızdır** (“42”, “7”den “daha iyi” değildir). Bu yüzden birçok modelde ham indeks yerine **one-hot**, **TF-IDF** veya **embedding** kullanılır. Ödev özellikle **one-hot / integer** dediği için ikisini de denemeniz veya en az birini gerekçeyle seçmeniz beklenir.
 
-| Model | Boyut | Dil | Alan | AUC-ROC |
-|-------|-------|-----|------|---------|
-| `paraphrase-multilingual-MiniLM-L12-v2` | 384 | Cok dilli (50+) | Genel | 0.9288 |
-| `emrecan/bert-base-turkish-cased-mean-nli-stsb-tr` | 768 | Turkce | NLI / STS | 0.9441 |
-| `Trendyol/TY-ecomm-embed-multilingual-base-v1.2.0` | 768 | Turkce + Cok dilli | E-ticaret | **0.9568** |
+### 3. One-hot encoding (metin / kelime çantası ile ilişkisi)
 
-Trendyol modeli en iyi sonucu verdi cunku veri setimiz urun yorumlarindan olusuyor — modelin fine-tune edildigi alanla ayni. Bu, **alan uyumunun model boyutundan daha onemli oldugunu** gosteriyor.
+- **Kategorik etiket** için: 3 sınıf varsa her örnek `[1,0,0]`, `[0,1,0]`, `[0,0,1]` gibi temsil edilir.
+- **Metin için (Bag of Words benzeri):** Kelime dağarcığı boyutunda bir vektör düşünün; cümledeki her kelime için ilgili konum **1**, yoksa **0** (veya sayım için frekans). Bu, pratikte **çok boyutlu ve seyrek** vektörler üretir; `scikit-learn` içinde `CountVectorizer` / `TfidfVectorizer` bu tür temsillerle çalışır.
 
-**Ne zaman kullanilmali:** Etiketli veriniz var ve sifirdan derin ogrenme modeli egitmeden onemli olcude daha iyi ozellikler istiyorsunuz.
+### 4. “Basit bir duygu analizi modeli”
 
-### 2. Ollama ile Lokal Embedding (`--ollama`)
+Tipik akış:
 
-Ollama, `nomic-embed-text` embedding modelini tamamen yerel makinenizde calistirir. Hicbir veri harici bir API'ye gonderilmez — tam gizlilik saglayan tek secenektir.
+1. Etiketli cümle/metin verisi (ör. olumlu/olumsuz).
+2. Metinleri yukarıdaki gibi sayısallaştırma.
+3. Eğitim / doğrulama bölünmesi.
+4. Bir sınıflandırıcı eğitimi ve test metrikleri (doğruluk, F1, karışıklık matrisi).
 
-Odun: performans. `nomic-embed-text` Ingilizce agirlikli bir modeldir ve Turkce anlayisi sinirlidir (Turkce veri setimizde AUC = 0.83). Ingilizce metin veya gizliligin oncelikli oldugu RAG uygulamalari icin saglam bir secimdir.
+“Basit” genelde **klasik ML + vektörleştirme** demektir; BERT gibi transformatörler bu ödevin çekirdeği değildir (haftaya göre değişebilir).
 
-**Ne zaman kullanilmali:** Gizlilik kritik, Ingilizce metinle calisiyorsunuz veya internet erisimi olmadan lokal bir embedding cozumune ihtiyaciniz var.
+### 5. `textract` pratiği (dosyadan metin)
 
-### 3. Zero-Shot Siniflandirma (`--zero-shot`)
-
-Zero-shot siniflandirma **hicbir egitim verisi gerektirmez**. Onceden egitilmis bir Dogal Dil Cikarimi (NLI) modelini kullanarak bir cumlenin verilen bir etiket hipoteziyle eslestip eslesmedegini degerlendirir (ornegin "Bu metin pozitif bir duygu ifade ediyor").
-
-Bu projede `xlm-roberta-large-xnli` kullanilir — Turkce dahil 100'den fazla dili destekleyen cok dilli bir model.
-
-**Ne zaman kullanilmali:** Etiketli veriniz yok, yeni bir alan kesfediyorsunuz veya veri toplama yatirimina girismeden once hizli bir temel cizgi gerekiyor.
-
-### 4. BERTurk Fine-Tuning (`--finetune`)
-
-Fine-tuning, onceden egitilmis bir Turkce BERT modelini (`dbmdz/bert-base-turkish-cased`) bizim duygu analizi gorevimize uyarlar. Model, buyuk bir korpus uzerindeki on-egitiminden Turkce dilbilgisi, kelime anlamlari ve baglami zaten anlar. Bir siniflandirma katmani ekler ve etiketli verimiz uzerinde birkac epoch egitiriz.
-
-En guclu yaklasimdir ancak daha fazla islem gucu (GPU onerilir) ve etiketli veri gerektirir.
-
-**Ne zaman kullanilmali:** Etiketli veriniz var ve mumkun olan en yuksek dogrulugu istiyorsunuz. Metin siniflandirma gorevleri icin endustri standardidir.
-
-### Yaklasim Karsilastirmasi
-
-| Yaklasim | Egitim Gerekli mi? | Veri Gerekli mi? | Guc |
-|----------|--------------------|--------------------|-----|
-| CountVectorizer + ML | Evet | Evet | Dusuk |
-| TF-IDF + ML | Evet | Evet | Orta |
-| Transformer Embedding + ML (genel) | Hayir (sadece encode) + Evet (ML) | Evet | Orta-Yuksek |
-| Transformer Embedding + ML (alan-spesifik) | Hayir (sadece encode) + Evet (ML) | Evet | **Yuksek** |
-| Ollama Lokal Embedding + ML | Hayir (sadece encode) + Evet (ML) | Evet | Dusuk (Turkce icin) |
-| Zero-Shot | Hayir | Hayir | Orta-Yuksek |
-| Fine-Tuning BERTurk | Evet (GPU onerilir) | Evet | En Yuksek |
+Ödev metni “metinleri” diyebilir; kaynak **PDF veya Word** ise önce dosyadan UTF-8 metin çıkarmanız gerekir. Python’da [`textract`](https://pypi.org/project/textract/) çeşitli formatlardan metin çıkarmayı dener (sistemde ek bağımlılıklar gerekebilir). Alternatif olarak sadece `.txt` ile de ödev yapılabilir; `textract` isteğe bağlı bir **veri okuma** pratiğidir.
 
 ---
 
-## Kullanim
+## Önerilen uygulama adımları (mini yol haritası)
 
-```bash
-# Temel odev — sadece klasik ML
-python src/sentiment_analysis.py
-
-# Zeyrek morfolojik analiz ile
-python src/sentiment_analysis.py --zeyrek
-
-# Transformer embedding ekle (MiniLM + turkish-BERT-nli + Trendyol-ecomm)
-python src/sentiment_analysis.py --transformer
-
-# Lokal Ollama embedding ekle (gerekli: ollama pull nomic-embed-text)
-python src/sentiment_analysis.py --ollama
-
-# Zero-shot siniflandirma ekle (egitim gerekmiyor)
-python src/sentiment_analysis.py --zero-shot
-
-# BERTurk fine-tuning ekle
-python src/sentiment_analysis.py --finetune
-
-# Her seyi calistir
-python src/sentiment_analysis.py --all
-
-# Ozel CSV veri seti ile capraz dogrulama
-python src/sentiment_analysis.py --data data/train.csv --test-data data/test.csv --transformer
-
-# Tum embedding yontemleri ile tam karsilastirma
-python src/sentiment_analysis.py --data data/turkish_sentiment_binary_5k.csv \
-    --test-data data/external_test_1k.csv --transformer --ollama
-```
-
-### Cikti Dosyalari
-
-Tum ciktilar `outputs/` klasorune kaydedilir:
-
-| Dosya | Aciklama |
-|-------|----------|
-| `run_log.txt` | Her adimin zaman damgali tam logu |
-| `comparison_results.csv` | Tum model sonuclari tablo formatinda |
-| `analysis.md` | Sonuclarin otomatik olusturulan yorumu |
-| `analysis_cross_dataset.md` | Capraz veri seti dogrulama sonuclari ve detayli yorum |
-
----
-
-## Onerilen Uygulama Adimlari
-
-1. Kucuk bir duygu veri seti secin veya olusturun (en az iki sinif: pozitif/negatif). Script, yedek olarak 40 yerlesik Turkce cumle icerir.
-2. **Integer encoding:** Kavrami `CountVectorizer` veya manuel sozluk eslemesi ile gosterin.
-3. **One-hot temsili:** Metin ozellikleri icin `CountVectorizer(binary=True)` kullanin.
-4. **TF-IDF temsili:** Agirlikli ozellikler icin `TfidfVectorizer` kullanin.
-5. **Model egitimi:** `MultinomialNB`, `LogisticRegression`, `LinearSVC`, `XGBClassifier`, `LGBMClassifier` egitin.
-6. **Karsilastirma:** Tum vektorlestirici-model kombinasyonlarini F1 ve AUC-ROC ile degerlendirin.
-7. *(Opsiyonel)* Daha derin bir karsilastirma icin transformer embedding, zero-shot veya fine-tuning ekleyin.
-
----
-
-## Degerlendirme Metrikleri
-
-Bu proje her model icin hem **F1 (macro)** hem de **AUC-ROC** raporlar:
-
-- **F1** sabit bir siniflandirma esigine (genellikle 0.5) baglidir. Modelin o belirli esikte ne kadar iyi performans gosterdigini soyler.
-- **AUC-ROC** esikten bagimsizdir. Modelin pozitif ornekleri negatif orneklerin uzerine siralama yetenegini tum olasi esikler boyunca olcer. Yuksek AUC ama dusuk F1, modelin faydali kaliplari ogrendigini ancak esik kalibrasyonuna ihtiyac duydugunu gosterir.
-
-Her zaman ikisini de raporlayin. Model kalitesi hakkinda farkli hikayeler anlatirlar.
+1. Küçük bir duygu veri seti seçin veya `.txt`/CSV ile kendi örneklerinizi oluşturun (en az iki sınıf: olumlu/olumsuz).
+2. **Integer temsil:** `sklearn.feature_extraction.text` ile kelime indeksleri veya `CountVectorizer` ile sayım vektörleri.
+3. **One-hot benzeri temsil:** `CountVectorizer(binary=True)` veya çok sınıflı etiketlerde `OneHotEncoder` / `pd.get_dummies` (etiket tarafı için).
+4. Model: `MultinomialNB`, `LogisticRegression` veya `LinearSVC`.
+5. (İsteğe bağlı) Bir PDF’ten `textract` ile metin çekip aynı boru hattına verin.
 
 ---
 
 ## Kaynaklar
 
-### Resmi Dokumantasyon ve Ogreticiler
+### Resmi dokümantasyon ve öğreticiler
 
-- [scikit-learn: Metin verisiyle calisma](https://scikit-learn.org/stable/tutorial/text_analytics/working_with_text_data.html) — eksiksiz metin siniflandirma pipeline'i
-- [scikit-learn: CountVectorizer](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html)
-- [scikit-learn: TfidfVectorizer](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html)
-- [scikit-learn: OneHotEncoder](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.OneHotEncoder.html)
-- [scikit-learn: LabelEncoder](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.LabelEncoder.html)
+- [scikit-learn: Working with text data](https://scikit-learn.org/stable/tutorial/text_analytics/working_with_text_data.html) — metin sınıflandırma boru hattı (vektörleştirme + model).
+- [scikit-learn: `CountVectorizer`](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html)
+- [scikit-learn: `TfidfVectorizer`](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html) *(TF-IDF ödevde özellikle istenmese de pratikte çok kullanılır; one-hot/sayısallaştırma fikrini pekiştirir.)*
+- [scikit-learn: `OneHotEncoder`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.OneHotEncoder.html) — kategorik (ör. sınıf veya kategori) değişkenler için.
+- [scikit-learn: `LabelEncoder`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.LabelEncoder.html) *(hedef etiketleri sayıya çevirmek için; bazı modellerle birlikte kullanımına dikkat edin.)*
 
-### Duygu Analizi ve NLP Temelleri
+### Duygu analizi / NLP giriş
 
-- [NLTK Book — Bolum 6: Metin Siniflandirma](https://www.nltk.org/book/ch06.html) — klasik NLP perspektifi
-- [Kaggle Learn: NLP Kursu](https://www.kaggle.com/learn/natural-language-processing) — kisa, pratik moduller
-- Jurafsky & Martin, *Speech and Language Processing* — [online taslak](https://web.stanford.edu/~jurafsky/slp3/) — ozellikle metin siniflandirma ve logistic regression bolumleri
+- [NLTK: Sentiment Analysis (kitap bölümü)](https://www.nltk.org/book/ch06.html) — klasik NLP perspektifi.
+- [Kaggle Learn: NLP (course)](https://www.kaggle.com/learn/natural-language-processing) — kısa modüller (İngilizce).
+
+### textract ve dosyadan metin
+
+- [textract (PyPI)](https://pypi.org/project/textract/)
+- [textract GitHub](https://github.com/deanmalmgren/textract) — desteklenen formatlar ve kurulum notları.
+
+### Kavramsal okuma
+
+- Jurafsky & Martin, *Speech and Language Processing* — [Logistic regression + NLP bölümleri (online taslak)](https://web.stanford.edu/~jurafsky/slp3/) — özellikle metin sınıflandırma ve lojistik regresyon bağlamı.
+
+---
+
+## Guncel Yaklasimlar (Ekstra)
+
+Bu projede odev gereksinimlerinin otesinde 3 guncel yaklasim da uygulanmistir:
+
+### 1. Transformer Embedding (`--transformer`)
+
+CountVectorizer ve TF-IDF kelimeleri bagimsiz sayar; kelime sirasi ve anlam kaybolur.
+Transformer embedding ise onceden egitilmis bir dil modelinin (orn. `paraphrase-multilingual-MiniLM-L12-v2`)
+her cumleyi 384 boyutlu **yogun vektor** olarak kodlamasini saglar. Bu vektorler cumlenin
+**butunsel anlamini** tasir ve ayni klasik ML modellerine (LogReg, SVM, XGBoost) girdi olarak verilir.
+Egitim gerektirmez (sadece encode), ama vektorlestirme kalitesi cok daha yuksektir.
+
+**Neden onemli:** Kelime cantasi (BoW) yaklasimlari "film harikaydı" ile "harikaydı film" arasinda
+fark goremez; transformer ise cumle yapisini ve baglamsal anlami yakalar.
+
+### 2. Zero-Shot Classification (`--zero-shot`)
+
+Hicbir egitim verisi kullanmadan, onceden egitilmis bir NLI (Natural Language Inference) modeli ile
+duygu tahmini yapar. Model her cumle icin "Bu cumle pozitif/negatif" hipotezlerini degerlendirir.
+Etiketli veri yokken bile calisir — ozellikle yeni alan/dil icin hizli prototipleme icin idealdir.
+
+**Neden onemli:** Gercek dunyada etiketli veri toplamak pahali ve yavasdir. Zero-shot ile
+bir baseline olusturup "egitim yapmazsam ne elde ederim?" sorusunu cevaplayabilirsiniz.
+
+### 3. Fine-Tuning BERTurk (`--finetune`)
+
+`dbmdz/bert-base-turkish-cased` modelini kendi duygu verimizle ince ayar (fine-tune) yapar.
+Model hem Turkce dil bilgisini (onceden ogrenilmis) hem de gorev-spesifik kaliplari (bizim verimizden)
+birlestirir. Bu, duygu analizi icin en guclu yaklasimdir ama egitim icin GPU oneriler.
+
+**Neden onemli:** Transfer ogrenme, az veriyle bile yuksek performans saglar.
+Buyuk dil modeli genel Turkce'yi bilir; siz sadece "bu gorevde pozitif/negatif ne demek"
+bilgisini ekliyorsunuz.
+
+### Karsilastirma ozeti
+
+| Yaklasim | Egitim Gerekli mi? | Veri Gerekli mi? | Guc |
+|---|---|---|---|
+| CountVectorizer + ML | Evet | Evet | Dusuk |
+| TF-IDF + ML | Evet | Evet | Orta |
+| Transformer Embedding + ML | Hayir (encode) + Evet (ML) | Evet | Yuksek |
+| Zero-Shot | Hayir | Hayir | Orta-Yuksek |
+| Fine-Tuning BERTurk | Evet (GPU oneriler) | Evet | En Yuksek |
+
+---
+
+## Guncel Yaklasimlar icin Kaynaklar
 
 ### Transformer Embedding
 
-- [Sentence-Transformers Dokumantasyonu](https://www.sbert.net/) — onceden egitilmis modellerle cumle embedding'leri kullanimi
-- [Jay Alammar: The Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/) — transformer mimarisine gorsel rehber
-- [Jay Alammar: The Illustrated Word2Vec](https://jalammar.github.io/illustrated-word2vec/) — kelime vektorlerinden cumle vektorlerine
-- [HuggingFace: paraphrase-multilingual-MiniLM-L12-v2](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2) — genel cok dilli sentence transformer
-- [HuggingFace: bert-base-turkish-cased-mean-nli-stsb-tr](https://huggingface.co/emrecan/bert-base-turkish-cased-mean-nli-stsb-tr) — Turkce'ye ozel sentence transformer (NLI + STS)
-- [HuggingFace: Trendyol E-Ticaret Embedding](https://huggingface.co/Trendyol/TY-ecomm-embed-multilingual-base-v1.2.0) — Trendyol'un alan-spesifik e-ticaret embedding modeli (deneyimizdeki en iyi performans)
+- [Sentence-Transformers dokumantasyonu](https://www.sbert.net/) — sentence embedding kullanimi ve onceden egitilmis modeller
+- [Jay Alammar: The Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/) — Transformer mimarisini gorsel olarak anlatan klasik yazi
+- [Jay Alammar: The Illustrated Word2Vec](https://jalammar.github.io/illustrated-word2vec/) — kelime vektorlerinden cumle vektorlerine gecis
+- [Hugging Face: paraphrase-multilingual-MiniLM-L12-v2](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2) — bu projede kullanilan model karti
 
-### Ollama ile Lokal Embedding
+### Zero-Shot Classification
 
-- [Ollama](https://ollama.com/) — LLM ve embedding modellerini lokalde calistirin
-- [nomic-embed-text](https://ollama.com/library/nomic-embed-text) — lokal kullanim icin 768 boyutlu embedding modeli
-- [Ollama Embedding API](https://github.com/ollama/ollama/blob/main/docs/api.md#generate-embeddings) — `/api/embed` endpoint dokumantasyonu
+- [Hugging Face: Zero-Shot Classification rehberi](https://huggingface.co/tasks/zero-shot-classification) — kavram ve kullanim ornekleri
+- [Yin et al., 2019 — Benchmarking Zero-shot Text Classification](https://arxiv.org/abs/1909.00161) — zero-shot metin siniflandirma uzerine temel makale
+- [Hugging Face: xlm-roberta-large-xnli](https://huggingface.co/joeddav/xlm-roberta-large-xnli) — bu projede kullanilan cok dilli zero-shot model
 
-### Zero-Shot Siniflandirma
+### Fine-Tuning (Transfer Ogrenme)
 
-- [HuggingFace: Zero-Shot Siniflandirma Rehberi](https://huggingface.co/tasks/zero-shot-classification) — kavram ve kullanim ornekleri
-- [Yin et al., 2019 — Benchmarking Zero-shot Text Classification](https://arxiv.org/abs/1909.00161) — zero-shot metin siniflandirma temel makalesi
-- [HuggingFace: xlm-roberta-large-xnli](https://huggingface.co/joeddav/xlm-roberta-large-xnli) — bu projede kullanilan cok dilli zero-shot model
-
-### Fine-Tuning ve Transfer Ogrenme
-
-- [HuggingFace: Metin Siniflandirma Rehberi](https://huggingface.co/docs/transformers/tasks/sequence_classification) — adim adim fine-tuning
-- [BERTurk (dbmdz)](https://huggingface.co/dbmdz/bert-base-turkish-cased) — Turkce BERT model karti
-- [Jay Alammar: The Illustrated BERT](https://jalammar.github.io/illustrated-bert/) — BERT'in gorsel aciklamasi
+- [Hugging Face: Text Classification rehberi](https://huggingface.co/docs/transformers/tasks/sequence_classification) — fine-tuning adim adim
+- [BERTurk (dbmdz)](https://huggingface.co/dbmdz/bert-base-turkish-cased) — Turkce BERT model karti ve kullanim
+- [Stanford CS224N](https://web.stanford.edu/class/cs224n/) — NLP dersi, BERT ve transfer ogrenme bolumleri
+- [Jay Alammar: The Illustrated BERT](https://jalammar.github.io/illustrated-bert/) — BERT mimarisini gorsel olarak anlatan yazi
 - [Devlin et al., 2019 — BERT: Pre-training of Deep Bidirectional Transformers](https://arxiv.org/abs/1810.04805) — orijinal BERT makalesi
-- [Stanford CS224N](https://web.stanford.edu/class/cs224n/) — BERT ve transfer ogrenme iceren NLP kursu
 
-### Genel NLP ve Derin Ogrenme
+### Genel NLP / Derin Ogrenme
 
-- [HuggingFace NLP Kursu (ucretsiz)](https://huggingface.co/learn/nlp-course) — baslangictan ileriye NLP
-- [StatQuest: Naive Bayes](https://www.youtube.com/watch?v=O2L2Uv9pdDA) — Naive Bayes'in sezgisel aciklamasi
-- [StatQuest: Word Embeddings](https://www.youtube.com/watch?v=viZrOnJclY0) — embedding'lere gorsel giris
-- [Lilian Weng: Attention? Attention!](https://lilianweng.github.io/posts/2018-06-24-attention/) — dikkat mekanizmalari uzerine kapsamli blog yazisi
-- [3Blue1Brown: Neural Networks](https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi) — sinir aglarinin nasil ogrendigine dair sezgi olusturma
-
-### Turkce NLP Araclari
-
-- [Zeyrek](https://github.com/obulat/zeyrek) — Turkce morfolojik analiz kutuphanesi
-- [Turkce Duygu Veri Seti (Kaggle)](https://www.kaggle.com/datasets/winvoker/turkish-sentiment-analysis-dataset) — etiketli Turkce film yorumlari
-- [Trendyol Acik Kaynak Modeller](https://huggingface.co/Trendyol) — Trendyol'un 19 acik kaynak modeli (LLM, embedding, goruntu)
-
-### Metin Cikarimi (Opsiyonel)
-
-- [textract (PyPI)](https://pypi.org/project/textract/) — PDF, DOCX ve diger formatlardan metin cikarimi
-- [textract GitHub](https://github.com/deanmalmgren/textract) — desteklenen formatlar ve kurulum talimatlari
+- [Hugging Face NLP Course (ucretsiz)](https://huggingface.co/learn/nlp-course) — baslangictan ileri seviyeye NLP kursu
+- [StatQuest: Word Embedding & NLP videolari](https://www.youtube.com/watch?v=viZrOnJclY0) — sezgisel aciklamalar
+- [Lilian Weng: Attention? Attention!](https://lilianweng.github.io/posts/2018-06-24-attention/) — dikkat mekanizmasi uzerine kapsamli blog yazisi
 
 ---
 
 ## Notlar
 
-- **Turkce metin** ile calisiyorsaniz, temel on isleme (kucuk harfe cevirme, noktalama temizleme) sonuclari iyilestirebilir. Gelismis kok bulma/lemmatizasyon icin opsiyonel `--zeyrek` bayragi Zeyrek kutuphanesini kullanir.
-- One-hot vektorleri buyuk sozluklerde cok **seyrek** olur. scikit-learn seyrek matrisleri verimli bir sekilde isler.
-- Yerlesik ornek veri seti sadece 40 cumle icerir. Sonuclar gosterim amaclidir, guvenilir degildir. Anlamli karsilastirmalar icin 500'den fazla ornekli bir veri seti kullanin.
-- Capraz veri seti dogrulama icin `--test-data` parametresini kullanin — egitim ve test verisi farkli kaynaklardan gelir, veri sizintisi riski ortadan kalkar.
+- **Türkçe metin** kullanacaksanız basit ön işleme (küçük harf, noktalama) sonuçları iyileştirebilir; Türkçe için ileri seviye **stemming/lemmatization** ayrı kütüphane gerektirebilir, ödev kapsamı dışında bırakılabilir.
+- Büyük kelime dağarcığında one-hot benzeri vektörler **seyrek (sparse)** olur; `scikit-learn` bunun için uygundur.
 
 ---
 
-*Bu proje, metin kodlama ve duygu analizi uzerine bir ders odevi kapsaminda olusturulmustur.*
+*Bu dosya, ders ödevi kapsamında öğrenme hedeflerini ve kaynakları derlemek için oluşturulmuştur.*
