@@ -76,7 +76,7 @@ flowchart TB
 
 > Gemini `max_latency 7.15s` is one slow Q2 outlier — the median Gemini turn stays under 2s. Numbers reflect the spec-compliant run after the `DirectoryLoader` refactor.
 
-⚠️ Ollama'nın `smoke_ok=6/6`'sı yanıltıcı — non-empty olduklarını sayıyor, içeriklerinin doğru olup olmadığını değil. `hallu_cite` ve `lang_consistency` gerçek kaliteyi gösteriyor.
+⚠️ Ollama's `smoke_ok=6/6` is misleading — it only counts non-empty answers, not whether the content is correct. `hallu_cite` and `lang_consistency` show the real quality.
 
 ---
 

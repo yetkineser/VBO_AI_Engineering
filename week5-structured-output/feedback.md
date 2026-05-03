@@ -1,6 +1,8 @@
-# Week 5 — Feedback ve Düzeltme
+# Week 5 — Feedback and Fix
 
-## Hocadan Gelen Geri Bildirim (Alican Payaslı, 2026-04-29)
+## Instructor Feedback (Alican Payaslı, 2026-04-29)
+
+The original feedback was given in Turkish. Quoted verbatim below, with an English summary underneath.
 
 > Ellerine sağlık Yetkin, her hafta olduğu gibi yine dört dörtlük bir çalışma. İstenilenin de ötesinde teslimler. Sadece şurada küçük bir eksik var:
 >
@@ -9,28 +11,31 @@
 >
 > Teşekkür ederiz
 
-## Geri Bildirim Üzerine Yapılan Düzeltme
+**English summary:** great submission overall, going beyond what was asked. One small gap: there is no try/except around the LLM call. If a single row fails, the whole pipeline crashes and the remaining tickets are not processed. A per-row try/except plus an optional retry would fix this. (-1 point)
 
-### Sorun
-Orijinal `main.py`'da `agent.invoke(...)` çağrısı `for` döngüsünün içinde **çıplak** çağrılıyordu. Tek bir satırda hata olursa (rate limit, timeout, network drop, Pydantic validation fail) tüm pipeline çöker ve geri kalan ticket'lar işlenmezdi. 50 satırlık bir batch'in 47'si işlendikten sonra çökmek = baştan başlamak.
+## What Was Fixed
 
-### Çözüm: Satır Bazında try/except + Tenacity ile Retry
+### The Problem
+In the original `main.py`, the `agent.invoke(...)` call sat **bare** inside the `for` loop. If a single row raised an error (rate limit, timeout, network drop, Pydantic validation failure), the whole pipeline would crash and the rest of the tickets would never run. Crashing after 47 of 50 rows means starting from scratch.
 
-İki katmanlı hata yönetimi eklendi:
+### The Fix: Per-Row try/except + Tenacity Retry
 
-1. **Inner katman (transient hatalar için retry)**: `tenacity` ile 3 deneme, exponential backoff (2s → 4s → 8s).
-2. **Outer katman (her satır için try/except)**: 3 retry de başarısız olursa, hata `errors.jsonl`'e yazılır ve döngü diğer satırla devam eder.
+A two-layer error-handling strategy was added:
 
-### Akıllı Retry: ValidationError'ları retry'lama
-`pydantic.ValidationError` model çıktısı şemaya uymadığı için olur — aynı prompt'u tekrar göndermek aynı hatayı verir. `retry_if_not_exception_type(ValidationError)` ile bu durumda direkt fail edilir, üç defa boşa beklenmez.
+1. **Inner layer (retry on transient errors):** `tenacity` retries up to 3 times with exponential backoff (2s → 4s → 8s).
+2. **Outer layer (per-row try/except):** if all 3 retries fail, the error is appended to `errors.jsonl` and the loop continues with the next row.
 
-### Yeni Output Dosyası: `errors.jsonl`
-Her hatalı satır için:
+### Smart Retry: Skip ValidationError
+
+A `pydantic.ValidationError` happens when the model output does not match the schema — re-sending the same prompt will produce the same error. With `retry_if_not_exception_type(ValidationError)` we fail fast in that case instead of waiting through three useless retries.
+
+### New Output File: `errors.jsonl`
+For every failed row:
 ```json
 {"customer_id": "CUST-XXX", "error_type": "TimeoutError", "error_message": "..."}
 ```
 
-Stdout'a düşen progress örneği:
+Sample stdout progress:
 ```
 [3/8] FAIL CUST-003: TransientLLMError — Connection timeout
   → logged to errors.jsonl, continuing.
@@ -38,8 +43,8 @@ Stdout'a düşen progress örneği:
 Done. 7/8 successful, 1 errors.
 ```
 
-## Ders
+## The Lesson
 
-**Production-style pipeline'larda her external API çağrısı satır bazında try/except + retry ile sarılmalı.** Tek bir transient hata batch'in ortasında pipeline'ı çökertirse, kısmi sonuç kaybolur ve baştan başlamak gerekir. Satır-bazlı izolasyon + retry ile failure radius azalır, başarılı satırlar korunur, sadece gerçekten kalıcı hatalı satırlar işlenmez.
+**In production-style pipelines, every external API call inside a loop must be wrapped in per-row try/except plus retry.** A single transient error in the middle of a batch will crash the pipeline, the partial results disappear, and the run has to start over. Per-row isolation plus retry shrinks the failure radius — successful rows are kept, and only the rows that genuinely fail get skipped.
 
-Bu düzeltme [main.py](main.py)'a uygulandı; `pyproject.toml`'a `tenacity>=8.0` eklendi.
+The fix lives in [main.py](main.py); `tenacity>=8.0` was added to `pyproject.toml`.

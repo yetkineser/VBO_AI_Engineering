@@ -1,10 +1,10 @@
-# Week 6 — Extras (Spec'in Üstüne Yapılanlar + Yol Haritası)
+# Week 6 — Extras (Beyond the Spec + Roadmap)
 
-Spec'i karşılayan **base ödev** [`hr_rag_chatbot/`](hr_rag_chatbot/) altında — `main.py ingest` + `main.py chat` ile çalışır. Bu dosya **base'in üstüne ne eklendi** ve **sırada ne var** sorusunu cevaplıyor. Week 5'te yaptığın `--local` + `model_comparison.md` pattern'i Week 6'da daha kapsamlı hale getirildi.
+The base homework lives under [`hr_rag_chatbot/`](hr_rag_chatbot/) — `main.py ingest` + `main.py chat` runs the spec-compliant pipeline. This file lists **what was added on top of the base** and **what comes next**. The Week 5 `--local` + `model_comparison.md` pattern was carried into Week 6 and made wider.
 
 ---
 
-## Mimari Genel Görünüm
+## Architecture Overview
 
 ```mermaid
 flowchart TB
@@ -39,11 +39,11 @@ flowchart TB
 
 ---
 
-## ✅ Şu ana kadar eklenenler
+## ✅ What was added on top of the base
 
-### 1. `--model {gemini,deepseek,ollama}` profilleri
+### 1. `--model {gemini,deepseek,ollama}` profiles
 
-Spec sadece Gemini istiyor. [`rag_agent.py:30-34`](hr_rag_chatbot/rag_agent.py#L30-L34)'te `PROFILES` dict ile üç model arkasını bağladım:
+The spec only requires Gemini. In [`rag_agent.py:30-34`](hr_rag_chatbot/rag_agent.py#L30-L34) a `PROFILES` dict wires three different models behind a single agent:
 
 ```mermaid
 flowchart LR
@@ -56,46 +56,46 @@ flowchart LR
     O --> A
 ```
 
-**Neden değer:** Aynı kod, aynı sistem prompt, aynı retriever — sadece chat modeli değişiyor. Bu sayede karşılaştırma "model kalitesi" değişkenini izole ediyor (literatürde **single-variable ablation** denir, [BAIR'ın LLM eval guide'ı](https://bair.berkeley.edu/blog/2023/04/03/koala/) buna vurgu yapar).
+**Why this matters:** the same code, system prompt, and retriever — only the chat model changes. This isolates "model quality" as the single variable in the comparison (this is called **single-variable ablation** in the literature, see [BAIR's LLM eval guide](https://bair.berkeley.edu/blog/2023/04/03/koala/)).
 
-### 2. İki embedding profili (OpenRouter ↔ Ollama)
+### 2. Two embedding profiles (OpenRouter ↔ Ollama)
 
-[`vector_store.py:42-58`](hr_rag_chatbot/vector_store.py#L42-L58)'de `_embeddings(profile)` switch'i:
+[`vector_store.py:42-58`](hr_rag_chatbot/vector_store.py#L42-L58) has an `_embeddings(profile)` switch:
 
-| Profile | Embedding | Dim | Koleksiyon |
+| Profile | Embedding | Dim | Collection |
 |---|---|---|---|
 | `openrouter` (spec) | `openai/text-embedding-3-small` | 1536 | `vbo-aillm-bc-rag` |
 | `ollama` | `nomic-embed-text` | 768 | `vbo-aillm-bc-rag-ollama` |
 
-**Neden iki koleksiyon?** Chroma dim-mismatched yazımı reddeder. Aynı koleksiyona iki farklı boyutta vektör koymaya çalışırsan `ValueError: Embedding dimension X does not match collection dimensionality Y`.
+**Why two collections?** Chroma rejects writes whose vector dimension does not match the collection. If you try to write two vectors of different sizes into the same collection, you get `ValueError: Embedding dimension X does not match collection dimensionality Y`.
 
-### 3. Per-row try/except + retry (Week 5 dersi)
+### 3. Per-row try/except + retry (Week 5 lesson)
 
-[`main.py:100-119`](hr_rag_chatbot/main.py#L100-L119)'da test loop'u her sorunun çevresini try/except ile sarıyor — bir soru çökse diğerleri devam eder, hata JSONL'e yazılır. Week 5 [`feedback.md`](../week5-structured-output/feedback.md)'te aldığın `-1p`'nin doğal devamı.
+In [`main.py:100-119`](hr_rag_chatbot/main.py#L100-L119) the test loop wraps each question in try/except — if one question crashes, the others keep running and the error gets logged to JSONL. This is the natural follow-up to the `-1p` deduction in Week 5 [`feedback.md`](../week5-structured-output/feedback.md).
 
-Ollama testinde memory turn 3 `KeyError` attı — pipeline çökmedi, JSONL'e error olarak düştü. Bu sayede `scorer.py` hatayı görüp `memory_ok=2/3` bastı.
+In the Ollama test, memory turn 3 raised a `KeyError` — the pipeline did not crash, the error landed in the JSONL, and `scorer.py` correctly reported `memory_ok=2/3`.
 
 ### 4. JSONL test logger + scorer.py
 
-Her test runı `results/test_<model>.jsonl` üretiyor — her satır:
+Each test run produces `results/test_<model>.jsonl` with one record per turn:
 ```json
 {"model": "gemini", "section": "smoke", "question": "...", "answer": "...",
  "ok": true, "latency_s": 1.69, "timestamp": "..."}
 ```
 
-`scorer.py` 6 metrik basıyor: `smoke_ok`, `memory_ok`, `cite_rate`, `hallu_cite`, `lang_consistency`, `avg_latency_s`. **`hallu_cite` ve `lang_consistency` özellikle değerli** — `smoke_ok=6/6` çıktığı halde Ollama'nın gerçekten broken olduğunu yakalayan iki metrik bunlar.
+`scorer.py` prints six metrics: `smoke_ok`, `memory_ok`, `cite_rate`, `hallu_cite`, `lang_consistency`, `avg_latency_s`. **`hallu_cite` and `lang_consistency` are the most useful two** — they catch Ollama's real failures even when `smoke_ok=6/6` looks fine on paper.
 
-JSONL formatı [JSON Lines](https://jsonlines.org/) standardı — append-friendly, her satır bağımsız parse edilir.
+The JSONL format is the standard [JSON Lines](https://jsonlines.org/) format — append-friendly and parsable line by line.
 
-### 5. 3-Model karşılaştırma raporu
+### 5. 3-Model comparison report
 
-[`model_comparison.md`](model_comparison.md): Week 5 stilinde tablolar + per-question breakdown + Ollama'nın neden battığının teknik analizi ([Berkeley Function-Calling Leaderboard](https://gorilla.cs.berkeley.edu/leaderboard.html) referansıyla).
+[`model_comparison.md`](model_comparison.md): a Week 5–style writeup with tables, a per-question breakdown, and a technical analysis of why Ollama broke (with a [Berkeley Function-Calling Leaderboard](https://gorilla.cs.berkeley.edu/leaderboard.html) reference).
 
 ---
 
-## 🛠️ Planlanan eklemeler
+## 🛠️ Planned additions
 
-### 1. Reranker (BGE veya Cohere)
+### 1. Reranker (BGE or Cohere)
 
 ```mermaid
 flowchart LR
@@ -104,24 +104,24 @@ flowchart LR
     RR -->|top 4 by relevance| A["agent prompt"]
 ```
 
-**Neden:** Vector retrieval similarity'den sıralı geliyor, ama "iki vector birbirine yakın" ≠ "ikisi soruyu eşit iyi cevaplar". Cross-encoder reranker `(query, chunk)` çiftine birlikte bakıp gerçek alaka skoru üretir. **Tek en büyük ucuz kazanç** literatürde — [Pinecone'un benchmark'ında](https://www.pinecone.io/learn/series/rag/rerankers/) Recall@4 %15-30 artıyor.
+**Why:** vector retrieval ranks results by similarity, but "two vectors are close" is not the same as "they answer the question equally well". A cross-encoder reranker scores the `(query, chunk)` pair together and produces a real relevance score. This is **the single biggest cheap win** in the literature — [Pinecone's benchmark](https://www.pinecone.io/learn/series/rag/rerankers/) shows Recall@4 going up by 15-30%.
 
-LangChain entegrasyonu: [`ContextualCompressionRetriever` + `CrossEncoderReranker`](https://python.langchain.com/docs/integrations/retrievers/bge-rerank/). HuggingFace'deki [`BAAI/bge-reranker-base`](https://huggingface.co/BAAI/bge-reranker-base) ücretsiz, lokalde çalışır.
+LangChain integration: [`ContextualCompressionRetriever` + `CrossEncoderReranker`](https://python.langchain.com/docs/integrations/retrievers/bge-rerank/). HuggingFace's [`BAAI/bge-reranker-base`](https://huggingface.co/BAAI/bge-reranker-base) is free and runs locally.
 
 ### 2. Hybrid Retrieval (BM25 + Vector + RRF)
 
 ```mermaid
 flowchart LR
-    Q["query"] --> V["vector retriever<br/>(semantik)"]
+    Q["query"] --> V["vector retriever<br/>(semantic)"]
     Q --> B["BM25 retriever<br/>(keyword)"]
     V --> RRF["Reciprocal Rank Fusion"]
     B --> RRF
-    RRF --> Top["top-k birleşik liste"]
+    RRF --> Top["top-k merged list"]
 ```
 
-**Neden:** Embeddings semantik benzerliği yakalar ama exact-match'leri sıklıkla kaçırır. "Section 4.2" veya "TKT-88123" gibi tokenler vector space'de seyreltir. BM25 (keyword TF-IDF) o boşluğu doldurur. [Reciprocal Rank Fusion](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf) iki listeyi tek skorla birleştirir.
+**Why:** embeddings catch semantic similarity but often miss exact matches. Tokens like "Section 4.2" or "TKT-88123" get diluted in the vector space. BM25 (keyword TF-IDF) fills that gap. [Reciprocal Rank Fusion](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf) merges the two ranked lists into a single score.
 
-LangChain'de [`EnsembleRetriever`](https://python.langchain.com/docs/how_to/ensemble_retriever/) bunu out-of-the-box veriyor.
+LangChain ships this out of the box with [`EnsembleRetriever`](https://python.langchain.com/docs/how_to/ensemble_retriever/).
 
 ### 3. RAGAS Evaluation Harness
 
@@ -129,60 +129,60 @@ LangChain'de [`EnsembleRetriever`](https://python.langchain.com/docs/how_to/ense
 flowchart LR
     JSONL["test_*.jsonl"] --> RAGAS["RAGAS"]
     Docs["retrieved chunks"] --> RAGAS
-    RAGAS --> F["faithfulness<br/>(cevap retrieved'dan mı?)"]
-    RAGAS --> AR["answer_relevancy<br/>(soruya cevap mı?)"]
-    RAGAS --> CP["context_precision<br/>(retrieved alakalı mı?)"]
-    RAGAS --> CR["context_recall<br/>(eksik retrieved var mı?)"]
+    RAGAS --> F["faithfulness<br/>(is the answer based on retrieved chunks?)"]
+    RAGAS --> AR["answer_relevancy<br/>(does it answer the question?)"]
+    RAGAS --> CP["context_precision<br/>(are the retrieved chunks relevant?)"]
+    RAGAS --> CR["context_recall<br/>(are any relevant chunks missing?)"]
 ```
 
-**Neden:** Şu an `model_comparison.md`'deki manuel "PASS/FAIL" gözlemi sübjektif. [RAGAS](https://docs.ragas.io/) bu dört metriği LLM-as-judge ile otomatikleştiriyor — ödevi "Yetkin gözüyle iyi" değil "RAGAS skoru 0.87" diye savunabilirsin. Aynı 3-model karşılaştırması bilimsel zemine oturur.
+**Why:** the manual "PASS/FAIL" notes in `model_comparison.md` are subjective. [RAGAS](https://docs.ragas.io/) automates these four metrics using LLM-as-judge — so you can defend the homework with "the RAGAS faithfulness score is 0.87" instead of "I read it and it looks fine". The 3-model comparison gets a scientific basis.
 
 Paper: [Es et al., 2023 — RAGAS](https://arxiv.org/abs/2309.15217).
 
 ### 4. Streaming Responses
 
-[`agent.stream()`](https://python.langchain.com/docs/how_to/streaming/) ile token-by-token. CLI experience anında iyileşir, Gemini flash zaten 1.8s ortalama — streaming'le hissedilen latency yarıya iner.
+[`agent.stream()`](https://python.langchain.com/docs/how_to/streaming/) emits tokens one by one. The CLI experience improves immediately — Gemini Flash already averages 1.8s, but with streaming the perceived latency drops to half because the user starts reading right away.
 
 ### 5. Citation Verification
 
-Her cevabın citation'ını **post-hoc doğrula** — claim'in `file_name` içindeki bir chunk'tan geldiğini kontrol et. Ollama'nın hayali `employee_benefits_policy.docx` halüsinasyonunu otomatik yakalar.
+For every answer, **verify the citation after the fact** — check that the claim actually comes from a chunk in the cited `file_name`. This catches Ollama's hallucinated `employee_benefits_policy.docx` automatically.
 
-Pattern: [Anthropic'in Citations API'sinin](https://docs.anthropic.com/en/docs/build-with-claude/citations) tersine mühendisliği — model citation üretir, sen vector store'a sorup verify edersin.
+The pattern is the reverse of [Anthropic's Citations API](https://docs.anthropic.com/en/docs/build-with-claude/citations) — the model produces a citation, and you verify it against the vector store.
 
 ### 6. Query Rewriter (Multi-Query Expansion)
 
-Memory turn 2'de `"What about sick leave?"` Gemini'de çalıştı çünkü Gemini iyi paraphrase yaptı. Ollama'da çökmesi, onun bu adımı atlaması. **Pre-retrieval rewrite**: küçük bir LLM çağrısı ile pronoun-resolution + 3 paraphrase üret, hepsinin retrieval'ını birleştir.
+In memory turn 2, `"What about sick leave?"` worked on Gemini because Gemini paraphrased it well internally. Ollama failed there because it skipped that step. A **pre-retrieval rewrite** runs a small LLM call to do pronoun resolution and produce 3 paraphrases, then merges the retrieval results from all of them.
 
-LangChain: [`MultiQueryRetriever`](https://python.langchain.com/docs/how_to/MultiQueryRetriever/).
+LangChain has this as [`MultiQueryRetriever`](https://python.langchain.com/docs/how_to/MultiQueryRetriever/).
 
-### 7. Knowledge Graph (sadece dataset büyürse)
+### 7. Knowledge Graph (only if the dataset grows)
 
-Kullanıcı sordu — şu durumda ekosistem **overkill**. 8 kısa policy doc, birbirinden bağımsız konular. Vector RAG yeterli.
+The user asked about this — for the current data, a knowledge graph is **overkill**. There are 8 short policy docs, all on independent topics. Vector RAG is enough.
 
-KG'nin parlayacağı senaryolar:
-- Çalışan → manager → dept → policy → onay zinciri (multi-hop)
-- "Travel approve eden kişinin manager'ı kim?"
-- Cross-policy referansları (X policy'si Y policy'sine atıfta bulunuyor)
+KG would shine in scenarios like:
+- Employee → manager → dept → policy → approval chains (multi-hop)
+- "Who is the manager of the person who approves travel?"
+- Cross-policy references (policy X cites policy Y)
 
-Canon: [Microsoft GraphRAG](https://github.com/microsoft/graphrag), [LangChain GraphRAG entegrasyonu](https://python.langchain.com/docs/integrations/graphs/), [Neo4j + LangChain](https://neo4j.com/labs/genai-ecosystem/langchain/).
+Canonical references: [Microsoft GraphRAG](https://github.com/microsoft/graphrag), [LangChain GraphRAG integration](https://python.langchain.com/docs/integrations/graphs/), [Neo4j + LangChain](https://neo4j.com/labs/genai-ecosystem/langchain/).
 
 ---
 
-## Değer Sıralaması (en yüksekten en düşüğe)
+## Value Ranking (highest to lowest)
 
-| # | Ekleme | Etki | Effort | Çalışan örnek var mı? |
+| # | Addition | Impact | Effort | Working example available? |
 |---|---|:---:|:---:|:---:|
 | 1 | RAGAS eval | 🔴🔴🔴 | 1h | [docs](https://docs.ragas.io/en/stable/getstarted/evals/) |
 | 2 | Reranker (BGE) | 🔴🔴🔴 | 30m | [LangChain how-to](https://python.langchain.com/docs/integrations/retrievers/bge-rerank/) |
 | 3 | Hybrid retrieval | 🔴🔴 | 1h | [EnsembleRetriever](https://python.langchain.com/docs/how_to/ensemble_retriever/) |
-| 4 | Citation verify | 🔴🔴 | 45m | yok — yazmak gerek |
+| 4 | Citation verify | 🔴🔴 | 45m | none — needs to be written |
 | 5 | Query rewriter | 🔴🔴 | 30m | [MultiQueryRetriever](https://python.langchain.com/docs/how_to/MultiQueryRetriever/) |
 | 6 | Streaming | 🔴 | 20m | [agent.stream()](https://python.langchain.com/docs/how_to/streaming/) |
-| 7 | GraphRAG | 🔴 (bu data için) | 4h+ | [Microsoft GraphRAG](https://github.com/microsoft/graphrag) |
+| 7 | GraphRAG | 🔴 (for this data) | 4h+ | [Microsoft GraphRAG](https://github.com/microsoft/graphrag) |
 
 ---
 
-## Referanslar (genel)
+## General References
 
 - [LangChain RAG tutorial](https://python.langchain.com/docs/tutorials/rag/) — canonical
 - [LangChain Retrievers concept](https://python.langchain.com/docs/concepts/retrievers/)

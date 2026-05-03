@@ -1,10 +1,10 @@
 # Research Monitor — Daily AI/ML Digest
 
-Günlük olarak arXiv, GitHub, Medium/blog RSS feed'leri ve Hacker News'i tarayarak ilgi alanlarına göre filtrelenmiş bir araştırma raporu üreten otomasyon sistemi.
+An automation system that scans arXiv, GitHub, Medium/blog RSS feeds, and Hacker News every day, then produces a research report filtered by your topics of interest.
 
-## Takip Edilen Konular
+## Tracked Topics
 
-| Konu | Açıklama |
+| Topic | Description |
 |------|----------|
 | Autoresearch | Automated ML research, experiment automation, NAS |
 | AI Engineering | LLM ops, RAG, agents, vector DBs, prompt engineering |
@@ -14,14 +14,14 @@ Günlük olarak arXiv, GitHub, Medium/blog RSS feed'leri ve Hacker News'i taraya
 | Recommendation Systems | Recommendation, ranking, learning to rank, e-commerce |
 | LLM Optimization | Fine-tuning, quantization, LoRA, inference optimization |
 
-## Kaynaklar
+## Sources
 
-- **arXiv API** — cs.AI, cs.LG, cs.CL, cs.IR, cs.CV, stat.ML kategorileri
-- **GitHub Search API** — Trending repos, yeni projeler (opsiyonel token ile 5000 req/hr)
+- **arXiv API** — cs.AI, cs.LG, cs.CL, cs.IR, cs.CV, stat.ML categories
+- **GitHub Search API** — trending repos, new projects (optional token gives 5000 req/hr)
 - **RSS Feeds** — Towards Data Science, Towards AI, Medium (ML/AI/LLM), Dev.to, Analytics Vidhya, Sebastian Raschka, Lilian Weng, Jay Alammar, Chip Huyen, Eugene Yan, Simon Willison, deeplearning.ai
-- **Hacker News API** — Top stories filtered by AI/ML relevance
+- **Hacker News API** — top stories filtered by AI/ML relevance
 
-## Kurulum
+## Setup
 
 ```bash
 cd research-monitor
@@ -33,60 +33,60 @@ source .venv/bin/activate
 # Dependencies
 pip install -r requirements.txt
 
-# (Opsiyonel) GitHub token
+# (Optional) GitHub token
 cp .env.example .env
-# .env dosyasına GITHUB_TOKEN= satırını ekle
+# Add a GITHUB_TOKEN= line in the .env file
 ```
 
-## Kullanım
+## Usage
 
-### Tek seferlik çalıştırma
+### One-off run
 ```bash
 python run.py
 ```
 
-### Parametreler
+### Parameters
 ```bash
-# Son 3 günün arXiv makalelerini, 14 günün GitHub repolarını tara
+# Scan the last 3 days of arXiv papers and 14 days of GitHub repos
 python run.py --arxiv-days 3 --github-days 14
 
-# Sürekli çalışan scheduler (her gün 08:00 UTC'de)
+# Long-running scheduler (every day at 08:00 UTC)
 python run.py --schedule --schedule-time 08:00
 ```
 
-### Cron ile otomatik çalıştırma (macOS/Linux)
+### Automatic runs via cron (macOS/Linux)
 ```bash
 chmod +x setup_cron.sh
 ./setup_cron.sh
 ```
 
-## Çıktılar
+## Outputs
 
-Her çalıştırmada `reports/` klasörüne iki dosya üretir:
+Every run produces two files under `reports/`:
 
-- `reports/digest-YYYY-MM-DD.md` — Markdown rapor
-- `reports/digest-YYYY-MM-DD.html` — Tarayıcıda açılabilir dark-theme HTML rapor
+- `reports/digest-YYYY-MM-DD.md` — Markdown report
+- `reports/digest-YYYY-MM-DD.html` — dark-theme HTML report (opens in any browser)
 
-Rapor içeriği:
-1. arXiv makaleleri (başlık, yazarlar, abstract, PDF linki, eşleşen keywords)
-2. GitHub trending repolar (star sayısı, dil, açıklama)
-3. Blog yazıları (Medium, TDS, Dev.to, kişisel bloglar)
-4. Hacker News hikayeleri (score, yorum sayısı)
+Report contents:
+1. arXiv papers (title, authors, abstract, PDF link, matched keywords)
+2. GitHub trending repos (stars, language, description)
+3. Blog posts (Medium, TDS, Dev.to, personal blogs)
+4. Hacker News stories (score, comment count)
 
-## Yapı
+## Layout
 
 ```
 research-monitor/
 ├── run.py              ← Entry point
 ├── src/
-│   ├── config.py       ← Tüm ayarlar, konular, keywords, RSS feed listesi
+│   ├── config.py       ← All settings: topics, keywords, RSS feed list
 │   ├── arxiv_fetcher.py
 │   ├── github_fetcher.py
 │   ├── rss_fetcher.py
 │   ├── hn_fetcher.py
 │   ├── report.py       ← Markdown + HTML report generator
 │   └── monitor.py      ← Orchestrator
-├── reports/            ← Günlük raporlar (gitignored)
+├── reports/            ← Daily reports (gitignored)
 ├── data/               ← history.jsonl (gitignored)
 ├── requirements.txt
 ├── setup_cron.sh       ← Cron job installer
@@ -94,15 +94,15 @@ research-monitor/
 └── README.md
 ```
 
-## Konu/Keyword Ekleme
+## Adding Topics or Keywords
 
-`src/config.py` dosyasında `TOPICS` dict'ine yeni konu ekleyerek veya mevcut keyword'leri güncelleyerek sistemi özelleştirebilirsin. Yeni RSS feed'leri de `RSS_FEEDS` dict'ine eklenir.
+You can customize the system by editing the `TOPICS` dict in `src/config.py` — add a new topic or update the keywords of an existing one. New RSS feeds go into the `RSS_FEEDS` dict in the same file.
 
-## Gelecek İyileştirmeler
+## Planned Improvements
 
-- [ ] E-posta ile rapor gönderme (SMTP)
-- [ ] Slack/Discord webhook ile bildirim
-- [ ] Semantic similarity ile daha akıllı filtreleme (embeddings)
-- [ ] Geçmiş raporlarla karşılaştırma (yeni vs tekrar)
+- [ ] Email delivery (SMTP)
+- [ ] Slack / Discord webhook notifications
+- [ ] Smarter filtering with semantic similarity (embeddings)
+- [ ] Diff against previous reports (new vs. repeated items)
 - [ ] Docker container + docker-compose
 - [ ] Web dashboard (FastAPI + Streamlit)

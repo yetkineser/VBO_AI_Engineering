@@ -166,14 +166,16 @@ After observing the cloud model's failures, the pipeline was re-run with two loc
 
 > Try/except yok, bir satırın LLM çağrısında hata olursa tüm pipeline çöker ve geri kalan ticketlar işlenmez. Satır bazında try/except + opsiyonel retry iyi olur.
 
+(English: there is no try/except around the LLM call. If a single row fails, the whole pipeline crashes and the rest of the tickets are not processed. A per-row try/except plus an optional retry would fix this.)
+
 ### Action Taken
-Pipeline'a iki katmanlı hata yönetimi eklendi:
+A two-layer error-handling strategy was added to the pipeline:
 
-- **Tenacity retry decorator** (`invoke_with_retry`): transient hatalar (rate limit, timeout, network) için 3 deneme + exponential backoff. `ValidationError` retry edilmez (re-prompt aynı hatayı verir).
-- **Per-row try/except**: 3 retry de fail olursa hata `errors.jsonl`'e yazılır, döngü devam eder.
+- **Tenacity retry decorator** (`invoke_with_retry`): retries transient errors (rate limit, timeout, network) up to 3 times with exponential backoff. `ValidationError` is not retried (re-prompting produces the same error).
+- **Per-row try/except**: if all 3 retries fail, the error is written to `errors.jsonl` and the loop continues.
 
-Test edildi:
-- Local Qwen 2.5 14B: 8/8 başarılı, `errors.jsonl` boş.
-- Cloud (geçersiz API key ile): 8/8 satırda 3 retry sonrası fail, hepsi `errors.jsonl`'e yazıldı, pipeline çökmedi.
+Tested:
+- Local Qwen 2.5 14B: 8/8 succeeded, `errors.jsonl` empty.
+- Cloud (with an invalid API key): all 8 rows failed after 3 retries, every failure was written to `errors.jsonl`, and the pipeline did not crash.
 
-Detay: [feedback.md](feedback.md), kod: [main.py:121-138](main.py#L121-L138).
+Details: [feedback.md](feedback.md), code: [main.py:121-138](main.py#L121-L138).
