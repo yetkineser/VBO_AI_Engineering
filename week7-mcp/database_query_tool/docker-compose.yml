@@ -1,0 +1,31 @@
+services:
+  chinook:
+    image: postgres:16
+    container_name: chinook-db
+    ports:
+      # host:container — host port is 5433 because Week 6's `hr-rag-pg`
+      # already binds 5432. The container side stays on 5432.
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: chinook
+      POSTGRES_PASSWORD: chinook
+      # Init runs against the `postgres` admin DB on purpose: the Chinook
+      # script does `DROP DATABASE IF EXISTS chinook; CREATE DATABASE chinook;`
+      # and you cannot drop the database you are currently connected to.
+      # (If POSTGRES_DB is unset it defaults to POSTGRES_USER, i.e. `chinook`,
+      # which is exactly what we need to avoid.)
+      POSTGRES_DB: postgres
+    volumes:
+      # Drop the official Chinook PostgreSQL script next to this file as
+      # `Chinook_PostgreSql.sql` and Postgres will run it on first boot.
+      # Source: https://github.com/lerocha/chinook-database
+      - ./Chinook_PostgreSql.sql:/docker-entrypoint-initdb.d/01_chinook.sql:ro
+      - chinook_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chinook -d chinook"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  chinook_data:

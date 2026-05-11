@@ -57,3 +57,6 @@ wandb/
 
 # Local-only week 6 prep material (initial source docs)
 week6-rag/initial_docs/
+
+# Week 7 — Chinook SQL is fetched by setup_db.sh from upstream, do not commit
+week7-mcp/database_query_tool/Chinook_PostgreSql.sql
